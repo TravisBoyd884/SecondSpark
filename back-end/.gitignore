@@ -2,3 +2,5 @@
 .venv/
 # Pyenv version files
 .python-version
+# Ignore pycache
+__pycache__/

@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: always # Always restart if db crashes
+    environment: # Env variables
+      POSTGRES_DB: secondspark
+      POSTGRES_USER: default
+      POSTGRES_PASSWORD: password
+
+  # Python backend service
+  backend:
+    build: ./back-end/ #path to backend docker file and application
+    container_name: "python_backend"
+    ports:
+      - "5000:5000"
+    environment: # Env variables
+      DB_HOST: db
+      DB_NAME: secondspark
+      DB_USER: default # username for db
+      DB_PASSWORD: password # Password for db
+      DB_PORT: 5432
+      DB_SETUP_STAT: 0
+    depends_on:
+      - db
+  
+  # React native front end serverice
+  frontend:
+    build: ./front-end/ # Path to front end dockerfile
+    container_name: "front-end"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - backend
