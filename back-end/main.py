@@ -6,7 +6,7 @@ import os
 
 wait_for_db(40)
 if not os.path.exists("db/.setup_done"):
-    load_schema("db/secondspark_schema.sql")
+    load_schema("db/schema.sql")
     with open("db/.setup_done", "w") as f:
         f.write("setup complete")
     print("[INFO] Setup complete.")
