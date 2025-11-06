@@ -1,0 +1,19 @@
+FROM python:3.13-slim
+
+# Base directory in the docker container
+WORKDIR /back-end
+
+# Ensures print() statements show up immediately
+ENV PYTHONUNBUFFERED=1
+
+# Enables Flask debug features (optional, for development only)
+ENV FLASK_ENV=development
+ENV FLASK_APP=app.py
+
+COPY . /back-end/
+
+EXPOSE 8000
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+CMD ["python", "-u", "app/main.py"]
