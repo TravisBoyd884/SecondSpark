@@ -4,7 +4,7 @@ adds music and vectors to the database. It will also contain code
 that retrieves music and its vectors from the database.
 
 
-INTERFACE USAGE:
+**INTERFACE USAGE:**
 
 IMPORTING THE INTERFACE:
 from db.db_interface import db_interface
@@ -26,4 +26,14 @@ creating a new user. These methods simply call the method above and with the pro
 sql command and configuration.
 
 SEE INTERFACE.PY FILE FOR REFERENCE ON USAGE DESCRIBED HERE
+
+
+**DOCKER USAGE:**
+
+For the project progress assignment, this directory has a dockerfile which chan
+be used to build a container with only the database.
+
+- Build with: `docker build -t postgres-appdb .`
+- Run with: `docker run -d --name appdb-container -p 5432:5432 postgres-appdb`
+- Run with CLI access: `docker exec -it appdb-container psql -U student -d appdb`
 
