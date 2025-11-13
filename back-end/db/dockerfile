@@ -1,0 +1,17 @@
+# This docker file is created to run just the database seperate from the project.
+# Use the official PostgreSQL image
+FROM postgres:17
+
+# Set environment variables for Postgres
+ENV POSTGRES_USER=student
+ENV POSTGRES_PASSWORD=student
+ENV POSTGRES_DB=appdb
+
+# Copy schema and test data into the init directory
+# Any .sql files in /docker-entrypoint-initdb.d/ will be automatically run on first container startup
+COPY schema.sql /docker-entrypoint-initdb.d/01-schema.sql
+# Uncomment this line if test data is in a seperate file
+#COPY test_data.sql /docker-entrypoint-initdb.d/02-testdata.sql
+
+# Expose the default PostgreSQL port
+EXPOSE 5432

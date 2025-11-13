@@ -11,15 +11,6 @@ class APIRoutes:
         self.register_routes()
 
     def register_routes(self):
-        # This route PASSED tests performed by Nolan
-        # Get a song by ID
-        @api.route('/songs/<int:song_id>', methods=['GET'])
-        def get_song(song_id):
-            song = self.db.get_song_by_id(song_id)
-            if song:
-                return jsonify(song), 200
-            return jsonify({'error': 'Song not found'}), 404
-
         # Login
         @api.route('/login', methods=['POST'])
         def login():
