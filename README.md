@@ -1,14 +1,14 @@
 # SecondSpark
 ![SecondSpark Logo](front-end/public/Second.png)
 
-**SecondSpark** is a all-in-one dashboard for ecommerce platforms including Ebay and Etsy. SecondSpark combines the listing, purchase status, sale info, and item specifications from all of the clients items selling/sold across multiple ecommerce platforms.
+**SecondSpark** is a all-in-one dashboard for ecommerce platforms including Ebay and Etsy. SecondSpark combines the listing, purchase status, sale info, and item specifications from all of the shop owner's items selling/sold across multiple ecommerce platforms.
 
 ### Main Specifications:
 SecondSpark is comprized of three main components; a Postgresql database, a back-end server written in Python using FLASK, and a web front-end using React.  
 
 ### Running The Project
 *This project is dockerized*
-- You can run the entire project(3 containers) with the command `docker compose up`.
+- You can run the entire project(3 containers) with the command `docker compose up` while in the root of the project.
 
 **For Development:**
 
