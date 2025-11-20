@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Item } from '@/app/lib/definitions';
 import { item } from '@/app/lib/placeholder-data';
 import ItemModal from './itemModal';
+import '@/app/dashboard/items/items.css';
 
 export default function ItemsGridTest() {
     const [items, setItems] = useState<Item[]>([]);
@@ -31,10 +32,14 @@ export default function ItemsGridTest() {
   
     }
 
+    const handleSaveItem = () => {
+  
+    }
+
     return (
         <div>
             <div className="flex flex-wrap justify-content-center gap-4 mt-4 mb-4">
-                <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} />
+                <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} onSave={handleSaveItem} />
                 {items.map((item) => (
                     <div className="card p-4 shadow-sm rounded-md" key={item.item_id}>
                         <h2 className="text-lg font-bold">{item.title}</h2>
@@ -49,4 +54,3 @@ export default function ItemsGridTest() {
         </div>
     )
 }
-
