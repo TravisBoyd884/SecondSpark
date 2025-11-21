@@ -1,40 +1,18 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 # SecondSpark
+![SecondSpark Logo](front-end/public/Second.png)
+
+**SecondSpark** is a all-in-one dashboard for ecommerce platforms including Ebay and Etsy. SecondSpark combines the listing, purchase status, sale info, and item specifications from all of the shop owner's items selling/sold across multiple ecommerce platforms.
+
+### Main Specifications:
+SecondSpark is comprized of three main components; a Postgresql database, a back-end server written in Python using FLASK, and a web front-end using React.  
+
 ### Running The Project
 *This project is dockerized*
-You can run the project(3 containers) with the command `docker compose up`.
+- You can run the entire project(3 containers) with the command `docker compose up` while in the root of the project.
+
+**For Development:**
+
+- You can run specific containers or servers seperatly via their respected `dockerfile`/`docker-compose.yaml` file(s) in the given directories:
+    * The Python back-end is located in the `/back-end/` directory.
+    * The React front-end is located in the `/front-end/` directory.
+    * The Postgres database resources are located in the `/back-end/db/` directory.
