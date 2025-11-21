@@ -206,6 +206,12 @@ class db_interface(object):
         """Retrieves a user record by their username."""
         sql = "SELECT user_id, username, password, email, organization_id, organization_role FROM AppUser WHERE username = %s;"
         return self.execute_query(sql, params=(username,), fetch_one=True)
+
+    def get_user_by_id(self, user_id: int):
+        """Retrieves a user record by their ID (including password hash)."""
+        # Note: Selects all columns, including password hash (index 2), which is filtered in the Flask endpoint.
+        sql = "SELECT user_id, username, password, email, organization_id, organization_role FROM AppUser WHERE user_id = %s;"
+        return self.execute_query(sql, params=(user_id,), fetch_one=True)
     
     def update_user_role(self, user_id: int, new_role: str, new_org_id: int = None) -> bool:
         """Updates a user's organization role and optionally their organization."""
@@ -221,6 +227,19 @@ class db_interface(object):
         # Note: Will fail if the user is a creator for any existing Item due to FK constraint.
         sql = "DELETE FROM AppUser WHERE user_id = %s;"
         return self._execute_dml(sql, (user_id,))
+
+    def validate_user_credentials(self, username: str, password: str) -> int or None:
+        """
+        [INSECURE] Validates raw username and password against the database. 
+        Returns: user_id (int) if valid, None otherwise.
+        """
+        sql = "SELECT user_id FROM AppUser WHERE username = %s AND password = %s;"
+        
+        # Execute query fetches the single row (user_id,)
+        result = self.execute_query(sql, params=(username, password), fetch_one=True)
+        
+        # Returns the user_id (the first element of the result tuple) or None
+        return result[0] if result else None
 
     # Item CRUD ------------------------------------------------------------------------------------------------
 

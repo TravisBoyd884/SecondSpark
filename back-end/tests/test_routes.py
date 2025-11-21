@@ -16,6 +16,77 @@ TEST_DATA = {
     "transaction_item_id": None
 }
 
+# --- Add this function to test_endpoints.py ---
+
+def test_user_endpoints(BASE_URL):
+    """Tests the AppUser CRUD and Login endpoints."""
+    print("\n\n#####################################################")
+    print("## 👤 APPUSER CRUD & LOGIN TESTS")
+    print("#####################################################")
+    
+    # Define a test user
+    TEST_USERNAME = "test_user_001"
+    TEST_EMAIL = "test@example.com"
+    TEST_ORG_ID = 1 # TechCorp from schema.sql
+    TEST_PASSWORD = "secure_password"
+    
+    # ======================================================================
+    # 1. POST /users (CREATE)
+    # ======================================================================
+    new_user_data = {
+        "username": TEST_USERNAME,
+        "password": TEST_PASSWORD,
+        "email": TEST_EMAIL,
+        "organization_id": TEST_ORG_ID,
+        "organization_role": "Tester"
+    }
+    
+    run_test("POST Create New User", 'POST', f"{BASE_URL}/users", 
+             data=new_user_data, expected_status=201)
+
+    # ======================================================================
+    # 2. LOGIN /login (READ by Username/Password - as defined in routes.py)
+    # ======================================================================
+    login_data = {
+        "username": TEST_USERNAME,
+        "password": TEST_PASSWORD
+    }
+    login_res = run_test("LOGIN Test User", 'POST', f"{BASE_URL}/login", 
+                         data=login_data, expected_status=200)
+
+    # Try to extract the user_id for subsequent tests (assuming 6 since schema.sql has 5)
+    NEW_USER_ID = login_res.get("user_id") if login_res else 6 
+    print(f"[INFO] New User ID determined to be: {NEW_USER_ID}")
+
+
+    # ======================================================================
+    # 3. GET /users/<id> (READ Single)
+    # ======================================================================
+    run_test(f"GET User {NEW_USER_ID}", 'GET', f"{BASE_URL}/users/{NEW_USER_ID}")
+
+
+    # ======================================================================
+    # 4. PUT /users/<id> (UPDATE)
+    # ======================================================================
+    update_data = {
+        "organization_role": "Senior Tester",
+        "organization_id": 2 # GreenSoft from schema.sql
+    }
+    run_test(f"PUT Update User {NEW_USER_ID} Role/Org", 'PUT', f"{BASE_URL}/users/{NEW_USER_ID}", 
+             data=update_data, expected_status=200)
+
+    # Verify update (optional)
+    run_test(f"GET User {NEW_USER_ID} (Verify Update)", 'GET', f"{BASE_URL}/users/{NEW_USER_ID}")
+
+    
+    # ======================================================================
+    # 5. DELETE /users/<id> (DELETE)
+    # ======================================================================
+    run_test(f"DELETE User {NEW_USER_ID}", 'DELETE', f"{BASE_URL}/users/{NEW_USER_ID}", 
+             expected_status=200)
+
+# --- End of function ---
+
 def run_test(name, method, url, data=None, expected_status=200):
     """Helper function to run an HTTP request and print the result."""
     print(f"\n--- Running Test: {name} ---")
@@ -53,7 +124,7 @@ def run_test(name, method, url, data=None, expected_status=200):
 
 def main():
     print("Waiting 10 seconds for Flask server and DB initialization...")
-    time.sleep(10) # Give the Flask app a moment to start after DB is ready
+    #time.sleep(10) # Give the Flask app a moment to start after DB is ready
 
     # ======================================================================
     # 1. SETUP: Create Organization, Reseller, and Item for Transaction tests
@@ -102,6 +173,12 @@ def main():
     run_test(f"UPDATE Item {TEST_DATA['item_id']}", 'PUT', f"{BASE_URL}/items/{TEST_DATA['item_id']}", 
              data={"category": "Electronics - Updated", "description": "Updated for test"}, 
              expected_status=200)
+
+    # ======================================================================
+    # 2. ITEM CRUD TESTS
+    # ======================================================================
+
+    test_user_endpoints(BASE_URL)
 
     # ======================================================================
     # 3. TRANSACTION AND LINKING TESTS
