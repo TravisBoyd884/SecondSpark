@@ -217,6 +217,30 @@ class APIRoutes:
                 return jsonify({"message": f"Transaction item link {transaction_item_id} removed"}), 200
             return jsonify({"error": f"Failed to remove transaction item link {transaction_item_id}"}), 500
 
+        # ----------------------------------------------------------------------
+# 💸 USER TRANSACTIONS ENDPOINT (/users/<id>/transactions)
+        # ----------------------------------------------------------------------
+
+        # GET transactions by User ID (Fetches transactions involving items created by the user)
+        @api.route('/users/<int:user_id>/transactions', methods=['GET'])
+        def get_user_transactions(user_id):
+            """Fetches all transactions that include items created by the given user_id."""
+            
+            # 1. Check if the user exists (optional but good practice)
+            user_exists = self.db.get_user_by_id(user_id)
+            if not user_exists:
+                return jsonify({"error": f"User with ID {user_id} not found."}), 404
+            
+            # 2. Fetch all transactions associated with items created by this user
+            transactions = self.db.get_transactions_by_creator_id(user_id)
+            
+            if transactions:
+                # Return the list of transactions
+                return jsonify(transactions), 200
+            
+            # Return 200 with an empty list or a 404 with a message if none are found
+            return jsonify({"message": f"No transactions found for items created by user {user_id}."}), 200
+
 
         # ----------------------------------------------------------------------
 # 👤 APPUSER ENDPOINTS (/users)

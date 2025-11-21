@@ -16,7 +16,42 @@ TEST_DATA = {
     "transaction_item_id": None
 }
 
-# --- Add this function to test_endpoints.py ---
+
+def test_user_transactions_endpoint(BASE_URL):
+    """Tests the GET /users/<id>/transactions endpoint."""
+    print("\n\n#####################################################")
+    print("## 💸 USER TRANSACTIONS FETCH TEST")
+    print("#####################################################")
+    
+    # We will use user ID 1 (Jane Doe from schema.sql)
+    # The schema shows Jane Doe (user_id 1) created the 'Wireless Mouse' (item_id 1).
+    # The 'Wireless Mouse' is in transaction_id 1.
+    TEST_USER_ID = 1 
+    
+    # ======================================================================
+    # 1. GET /users/<id>/transactions
+    # ======================================================================
+    url = f"{BASE_URL}/users/{TEST_USER_ID}/transactions"
+    res = run_test(f"GET Transactions for User {TEST_USER_ID}", 'GET', url, expected_status=200)
+
+    # 2. Verification
+    if res and isinstance(res, list) and len(res) > 0:
+        # Check if transaction 1 (which includes Wireless Mouse) is present
+        found_transaction_1 = any(item[0] == 1 for item in res)
+        if found_transaction_1:
+            print(f"[PASSED] Verified that User {TEST_USER_ID} transactions were fetched and contain transaction 1.")
+        else:
+            print(f"[FAILED] Transactions fetched but did not contain expected transaction 1.")
+    elif res and len(res) == 0:
+        print(f"[FAILED] Expected transactions for User {TEST_USER_ID} but received an empty list.")
+    elif res is None:
+        print(f"[FAILED] Received no response data.")
+
+    # Test for a user with no transactions (e.g., a high, unlinked ID)
+    NON_EXISTENT_USER_ID = 999 
+    run_test(f"GET Transactions for Non-Existent User {NON_EXISTENT_USER_ID}", 'GET', 
+             f"{BASE_URL}/users/{NON_EXISTENT_USER_ID}/transactions", expected_status=404)
+
 
 def test_user_endpoints(BASE_URL):
     """Tests the AppUser CRUD and Login endpoints."""
@@ -216,6 +251,9 @@ def main():
     # DELETE /transactions/unlink/<id>
     run_test(f"DELETE Unlink Transaction Item {TEST_DATA['transaction_item_id']}", 'DELETE', 
              f"{BASE_URL}/transactions/unlink/{TEST_DATA['transaction_item_id']}", expected_status=200)
+
+    # Test enpoint for retieving transactions per user
+    test_user_transactions_endpoint(BASE_URL)
 
     # ======================================================================
     # 4. CLEANUP (Optional, uncomment if you want to test delete functionality)

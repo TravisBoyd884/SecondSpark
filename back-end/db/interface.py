@@ -310,6 +310,35 @@ class db_interface(object):
         sql = "DELETE FROM AppTransaction WHERE transaction_id = %s;"
         return self._execute_dml(sql, (transaction_id,))
 
+    def get_transactions_by_creator_id(self, creator_id: int):
+        """
+        Retrieves all transactions that include items created by the specified user (creator_id).
+        
+        Performs a three-way join: AppTransaction <- AppTransaction_Item <- Item <- AppUser.
+        """
+        sql = """
+            SELECT DISTINCT
+                t.transaction_id,
+                t.sale_date,
+                t.total,
+                t.tax,
+                t.reseller_comission,
+                r.reseller_name AS reseller
+            FROM
+                AppTransaction t
+            JOIN
+                AppTransaction_Item ati ON t.transaction_id = ati.transaction_id
+            JOIN
+                Item i ON ati.item_id = i.item_id
+            JOIN
+                Reseller r ON t.reseller_id = r.reseller_id
+            WHERE
+                i.creator_id = %s
+            ORDER BY
+                t.sale_date DESC;
+        """
+        return self.execute_query(sql, params=(creator_id,), fetch_all=True)
+
     # AppTransaction_Item CRUD (Link Table) --------------------------------------------------------------------
 
     def link_item_to_transaction(self, item_id: int, transaction_id: int) -> bool:
