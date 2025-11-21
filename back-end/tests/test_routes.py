@@ -16,6 +16,112 @@ TEST_DATA = {
     "transaction_item_id": None
 }
 
+
+def test_user_transactions_endpoint(BASE_URL):
+    """Tests the GET /users/<id>/transactions endpoint."""
+    print("\n\n#####################################################")
+    print("## 💸 USER TRANSACTIONS FETCH TEST")
+    print("#####################################################")
+    
+    # We will use user ID 1 (Jane Doe from schema.sql)
+    # The schema shows Jane Doe (user_id 1) created the 'Wireless Mouse' (item_id 1).
+    # The 'Wireless Mouse' is in transaction_id 1.
+    TEST_USER_ID = 1 
+    
+    # ======================================================================
+    # 1. GET /users/<id>/transactions
+    # ======================================================================
+    url = f"{BASE_URL}/users/{TEST_USER_ID}/transactions"
+    res = run_test(f"GET Transactions for User {TEST_USER_ID}", 'GET', url, expected_status=200)
+
+    # 2. Verification
+    if res and isinstance(res, list) and len(res) > 0:
+        # Check if transaction 1 (which includes Wireless Mouse) is present
+        found_transaction_1 = any(item[0] == 1 for item in res)
+        if found_transaction_1:
+            print(f"[PASSED] Verified that User {TEST_USER_ID} transactions were fetched and contain transaction 1.")
+        else:
+            print(f"[FAILED] Transactions fetched but did not contain expected transaction 1.")
+    elif res and len(res) == 0:
+        print(f"[FAILED] Expected transactions for User {TEST_USER_ID} but received an empty list.")
+    elif res is None:
+        print(f"[FAILED] Received no response data.")
+
+    # Test for a user with no transactions (e.g., a high, unlinked ID)
+    NON_EXISTENT_USER_ID = 999 
+    run_test(f"GET Transactions for Non-Existent User {NON_EXISTENT_USER_ID}", 'GET', 
+             f"{BASE_URL}/users/{NON_EXISTENT_USER_ID}/transactions", expected_status=404)
+
+
+def test_user_endpoints(BASE_URL):
+    """Tests the AppUser CRUD and Login endpoints."""
+    print("\n\n#####################################################")
+    print("## 👤 APPUSER CRUD & LOGIN TESTS")
+    print("#####################################################")
+    
+    # Define a test user
+    TEST_USERNAME = "test_user_001"
+    TEST_EMAIL = "test@example.com"
+    TEST_ORG_ID = 1 # TechCorp from schema.sql
+    TEST_PASSWORD = "secure_password"
+    
+    # ======================================================================
+    # 1. POST /users (CREATE)
+    # ======================================================================
+    new_user_data = {
+        "username": TEST_USERNAME,
+        "password": TEST_PASSWORD,
+        "email": TEST_EMAIL,
+        "organization_id": TEST_ORG_ID,
+        "organization_role": "Tester"
+    }
+    
+    run_test("POST Create New User", 'POST', f"{BASE_URL}/users", 
+             data=new_user_data, expected_status=201)
+
+    # ======================================================================
+    # 2. LOGIN /login (READ by Username/Password - as defined in routes.py)
+    # ======================================================================
+    login_data = {
+        "username": TEST_USERNAME,
+        "password": TEST_PASSWORD
+    }
+    login_res = run_test("LOGIN Test User", 'POST', f"{BASE_URL}/login", 
+                         data=login_data, expected_status=200)
+
+    # Try to extract the user_id for subsequent tests (assuming 6 since schema.sql has 5)
+    NEW_USER_ID = login_res.get("user_id") if login_res else 6 
+    print(f"[INFO] New User ID determined to be: {NEW_USER_ID}")
+
+
+    # ======================================================================
+    # 3. GET /users/<id> (READ Single)
+    # ======================================================================
+    run_test(f"GET User {NEW_USER_ID}", 'GET', f"{BASE_URL}/users/{NEW_USER_ID}")
+
+
+    # ======================================================================
+    # 4. PUT /users/<id> (UPDATE)
+    # ======================================================================
+    update_data = {
+        "organization_role": "Senior Tester",
+        "organization_id": 2 # GreenSoft from schema.sql
+    }
+    run_test(f"PUT Update User {NEW_USER_ID} Role/Org", 'PUT', f"{BASE_URL}/users/{NEW_USER_ID}", 
+             data=update_data, expected_status=200)
+
+    # Verify update (optional)
+    run_test(f"GET User {NEW_USER_ID} (Verify Update)", 'GET', f"{BASE_URL}/users/{NEW_USER_ID}")
+
+    
+    # ======================================================================
+    # 5. DELETE /users/<id> (DELETE)
+    # ======================================================================
+    run_test(f"DELETE User {NEW_USER_ID}", 'DELETE', f"{BASE_URL}/users/{NEW_USER_ID}", 
+             expected_status=200)
+
+# --- End of function ---
+
 def run_test(name, method, url, data=None, expected_status=200):
     """Helper function to run an HTTP request and print the result."""
     print(f"\n--- Running Test: {name} ---")
@@ -53,7 +159,7 @@ def run_test(name, method, url, data=None, expected_status=200):
 
 def main():
     print("Waiting 10 seconds for Flask server and DB initialization...")
-    time.sleep(10) # Give the Flask app a moment to start after DB is ready
+    #time.sleep(10) # Give the Flask app a moment to start after DB is ready
 
     # ======================================================================
     # 1. SETUP: Create Organization, Reseller, and Item for Transaction tests
@@ -104,6 +210,12 @@ def main():
              expected_status=200)
 
     # ======================================================================
+    # 2. ITEM CRUD TESTS
+    # ======================================================================
+
+    test_user_endpoints(BASE_URL)
+
+    # ======================================================================
     # 3. TRANSACTION AND LINKING TESTS
     # ======================================================================
 
@@ -139,6 +251,9 @@ def main():
     # DELETE /transactions/unlink/<id>
     run_test(f"DELETE Unlink Transaction Item {TEST_DATA['transaction_item_id']}", 'DELETE', 
              f"{BASE_URL}/transactions/unlink/{TEST_DATA['transaction_item_id']}", expected_status=200)
+
+    # Test enpoint for retieving transactions per user
+    test_user_transactions_endpoint(BASE_URL)
 
     # ======================================================================
     # 4. CLEANUP (Optional, uncomment if you want to test delete functionality)

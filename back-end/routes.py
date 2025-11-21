@@ -11,21 +11,9 @@ class APIRoutes:
         self.register_routes()
 
     def register_routes(self):
-        # Login
-        @api.route('/login', methods=['POST'])
-        def login():
-            data = request.get_json()
-            username = data.get("username")
-            password = data.get("password")
-            user_id = self.db.get_user_id(username, password)
-            if user_id:
-                return jsonify({"user_id": user_id}), 200
-            return jsonify({"error": "Invalid credentials"}), 401
-
-# --- Add the following code block to APIRoutes.register_routes in routes.py ---
 
         # ----------------------------------------------------------------------
-        # 📦 ITEM ENDPOINTS (/items)
+# 📦 ITEM ENDPOINTS (/items)
         # ----------------------------------------------------------------------
 
         # CREATE Item
@@ -95,7 +83,7 @@ class APIRoutes:
 
 
         # ----------------------------------------------------------------------
-        # 🏢 ORGANIZATION ENDPOINTS (/organizations)
+# 🏢 ORGANIZATION ENDPOINTS (/organizations)
         # ----------------------------------------------------------------------
         
         # CREATE Organization
@@ -128,7 +116,7 @@ class APIRoutes:
 
 
         # ----------------------------------------------------------------------
-        # 🏷️ RESELLER ENDPOINTS (/resellers)
+# 🏷️ RESELLER ENDPOINTS (/resellers)
         # ----------------------------------------------------------------------
         
         # CREATE Reseller
@@ -161,7 +149,7 @@ class APIRoutes:
 
         
         # ----------------------------------------------------------------------
-        # 💸 TRANSACTION ENDPOINTS (/transactions)
+# 💸 TRANSACTION ENDPOINTS (/transactions)
         # ----------------------------------------------------------------------
         
         # CREATE Transaction
@@ -203,7 +191,7 @@ class APIRoutes:
 
 
         # ----------------------------------------------------------------------
-        # 🔗 TRANSACTION ITEM LINKING ENDPOINTS (/transactions/link)
+# 🔗 TRANSACTION ITEM LINKING ENDPOINTS (/transactions/link)
         # ----------------------------------------------------------------------
 
         # LINK Item to Transaction (Create AppTransaction_Item)
@@ -228,3 +216,118 @@ class APIRoutes:
             if success:
                 return jsonify({"message": f"Transaction item link {transaction_item_id} removed"}), 200
             return jsonify({"error": f"Failed to remove transaction item link {transaction_item_id}"}), 500
+
+        # ----------------------------------------------------------------------
+# 💸 USER TRANSACTIONS ENDPOINT (/users/<id>/transactions)
+        # ----------------------------------------------------------------------
+
+        # GET transactions by User ID (Fetches transactions involving items created by the user)
+        @api.route('/users/<int:user_id>/transactions', methods=['GET'])
+        def get_user_transactions(user_id):
+            """Fetches all transactions that include items created by the given user_id."""
+            
+            # 1. Check if the user exists (optional but good practice)
+            user_exists = self.db.get_user_by_id(user_id)
+            if not user_exists:
+                return jsonify({"error": f"User with ID {user_id} not found."}), 404
+            
+            # 2. Fetch all transactions associated with items created by this user
+            transactions = self.db.get_transactions_by_creator_id(user_id)
+            
+            if transactions:
+                # Return the list of transactions
+                return jsonify(transactions), 200
+            
+            # Return 200 with an empty list or a 404 with a message if none are found
+            return jsonify({"message": f"No transactions found for items created by user {user_id}."}), 200
+
+
+        # ----------------------------------------------------------------------
+# 👤 APPUSER ENDPOINTS (/users)
+        # ----------------------------------------------------------------------
+
+        # Login 
+        @api.route('/login', methods=['POST'])
+        def login():
+            data = request.get_json()
+            username = data.get("username")
+            password = data.get("password")
+
+            if not all([username, password]):
+                return jsonify({"error": "Username and password required"}), 400
+
+            # This method directly checks the raw username and password in the database.
+            # This is must be changed for production application
+            user_id = self.db.validate_user_credentials(username, password)
+            
+            if user_id:
+                return jsonify({"user_id": user_id, "message": "Login successful"}), 200
+            else:
+                return jsonify({"error": "Invalid credentials"}), 401
+
+        # CREATE / Register User
+        @api.route('/users', methods=['POST'])
+        def create_app_user():
+            data = request.get_json()
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email")
+            organization_id = data.get("organization_id")
+            organization_role = data.get("organization_role", "User") # Default to 'User'
+            
+            # Check for required fields
+            if not all([username, password, email, organization_id]):
+                return jsonify({
+                    "error": "Missing required fields: username, password, email, organization_id"
+                }), 400
+            
+            # Call the comprehensive create_user method (assuming it's updated in interface.py)
+            success = self.db.create_user(username, password, email, organization_id, organization_role)
+            
+            if success:
+                return jsonify({"message": "User registered successfully"}), 201
+            return jsonify({"error": "Failed to register user. Username or email may exist."}), 500
+
+        # READ Single User
+        @api.route('/users/<int:user_id>', methods=['GET'])
+        def get_app_user(user_id):
+            # Requires a simple get_user_by_id in interface.py
+            user = self.db.get_user_by_id(user_id)
+            
+            if user:
+                # IMPORTANT: Filter out the password hash before sending to the client!
+                user_data = {
+                    "user_id": user[0],
+                    "username": user[1],
+                    "email": user[3],
+                    "organization_id": user[4],
+                    "organization_role": user[5]
+                }
+                return jsonify(user_data), 200
+            return jsonify({"error": f"User with ID {user_id} not found"}), 404
+
+        # UPDATE User Role/Organization
+        @api.route('/users/<int:user_id>', methods=['PUT'])
+        def update_app_user(user_id):
+            data = request.get_json()
+            new_role = data.get("organization_role")
+            new_org_id = data.get("organization_id")
+
+            if not any([new_role, new_org_id]):
+                return jsonify({"error": "Must provide 'organization_role' or 'organization_id' to update"}), 400
+
+            # Use the dedicated update method
+            success = self.db.update_user_role(user_id, new_role, new_org_id)
+
+            if success:
+                return jsonify({"message": f"User {user_id} updated successfully"}), 200
+            return jsonify({"error": f"Failed to update user {user_id}. Check if user or organization exists."}), 500
+
+        # DELETE User
+        @api.route('/users/<int:user_id>', methods=['DELETE'])
+        def delete_app_user(user_id):
+            success = self.db.delete_user(user_id)
+            if success:
+                return jsonify({"message": f"User {user_id} deleted successfully"}), 200
+            # Deletion might fail if the user is linked as a creator to an Item (FK constraint)
+            return jsonify({"error": f"Failed to delete user {user_id}. User may be a creator for existing items."}), 500
