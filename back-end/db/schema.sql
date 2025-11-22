@@ -16,10 +16,10 @@ CREATE TABLE AppUser (
     etsy_account_id INT,
     CONSTRAINT fk_organization
         FOREIGN KEY (organization_id)
-        REFERENCES Organization(organization_id)
+        REFERENCES Organization(organization_id),
     CONSTRAINT fk_ebay_account
         FOREIGN KEY (ebay_account_id)
-        REFERENCES Ebay(ebay_account_id)
+        REFERENCES Ebay(ebay_account_id),
     CONSTRAINT fk_etsy_account
         FOREIGN KEY (etsy_account_id)
         REFERENCES Etsy(etsy_account_id)
@@ -89,7 +89,7 @@ CREATE TABLE Ebay (
 CREATE TABLE EbayItem (
     sku VARCHAR UNIQUE PRIMARY KEY,
     item_id INT NOT NULL,
-    quantity INT DEFAULT,
+    quantity INT,
     ebay_item_id VARCHAR,
     ebay_offer_id VARCHAR,
     ebay_listing_id VARCHAR,
@@ -99,7 +99,7 @@ CREATE TABLE EbayItem (
     ebay_account_id INT NOT NULL,
     CONSTRAINT fk_item
         FOREIGN KEY (item_id)
-        REFERENCES Item(item_id)
+        REFERENCES Item(item_id),
     CONSTRAINT fk_ebay_account
         FOREIGN KEY (ebay_account_id)
         REFERENCES Ebay(account_id)
@@ -121,11 +121,11 @@ CREATE TABLE Etsy (
 CREATE TABLE EtsyItem (
     sku VARCHAR UNIQUE PRIMARY KEY,
     item_id INT NOT NULL,
-    quantity INT DEFAULT,
+    quantity INT,
     etsy_account_id INT NOT NULL,
     CONSTRAINT fk_item
         FOREIGN KEY (item_id)
-        REFERENCES Item(item_id)
+        REFERENCES Item(item_id),
     CONSTRAINT fk_etsy_account
         FOREIGN KEY (etsy_account_id)
         REFERENCES Etsy(account_id)
@@ -166,7 +166,7 @@ INSERT INTO Item (title, description, category, list_date, creator_id) VALUES
 INSERT INTO AppTransaction (sale_date, total, tax, seller_comission, seller_id) VALUES
 ('2024-06-01', 120.00, 10.00, 5.00, (SELECT user_id FROM AppUser WHERE name='alice')),
 ('2024-06-02', 45.00, 3.50, 2.00, (SELECT user_id FROM AppUser WHERE name='bob')),
-('2024-06-03', 80.00, 6.40, 4.00, (SELECT user_id FROM AppUser WHERE name='carol')),
+('2024-06-03', 80.00, 6.40, 4.00, (SELECT user_id FROM AppUser WHERE name='carol'));
 
 -- AppTransaction_Item
 INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
