@@ -1,12 +1,10 @@
--- 1. Create the Organization Table
+-- Create the Organization Table
 CREATE TABLE Organization (
     organization_id SERIAL PRIMARY KEY,
     name VARCHAR NOT NULL
 );
 
----
-
--- 2. Create the User Table
+-- Create the User Table
 CREATE TABLE AppUser (
     user_id SERIAL PRIMARY KEY,
     username VARCHAR NOT NULL,
@@ -14,14 +12,22 @@ CREATE TABLE AppUser (
     email VARCHAR NOT NULL,
     organization_id INT,
     organization_role VARCHAR,
+    ebay_account_id INT,
+    etsy_account_id INT,
     CONSTRAINT fk_organization
         FOREIGN KEY (organization_id)
         REFERENCES Organization(organization_id)
+    CONSTRAINT fk_ebay_account
+        FOREIGN KEY (ebay_account_id)
+        REFERENCES Ebay(ebay_account_id)
+    CONSTRAINT fk_etsy_account
+        FOREIGN KEY (etsy_account_id)
+        REFERENCES Etsy(etsy_account_id)
 );
 
 ---
 
--- 3. Create the Item Table
+-- Create the Item Table
 CREATE TABLE Item (
     item_id SERIAL PRIMARY KEY,
     title VARCHAR NOT NULL,
@@ -36,31 +42,23 @@ CREATE TABLE Item (
 
 ---
 
--- 4. Create the Reseller Table
-CREATE TABLE Reseller (
-    reseller_id SERIAL PRIMARY KEY,
-    reseller_name VARCHAR NOT NULL
-);
-
----
-
--- 5. Create the Transaction Table
+-- Create the Transaction Table
 -- Note: 'MONEY' is a standard PostgreSQL type for currency.
 CREATE TABLE AppTransaction (
     transaction_id SERIAL PRIMARY KEY,
     sale_date DATE,
     total MONEY,
     tax MONEY,
-    reseller_comission MONEY,
-    reseller_id INT NOT NULL,
-    CONSTRAINT fk_reseller
-        FOREIGN KEY (reseller_id)
-        REFERENCES Reseller(reseller_id)
+    seller_commision MONEY,
+    seller_id INT NOT NULL,
+    CONSTRAINT fk_seller
+        FOREIGN KEY (seller_id)
+        REFERENCES AppUser(user_id)
 );
 
 ---
 
--- 6. Create the AppTransaction_Item Table
+-- Create the AppTransaction_Item Table
 -- A composite primary key could also be used here, but for simplicity based on the ERD, 
 -- we'll use a single transaction_item_id as the PK.
 CREATE TABLE AppTransaction_Item (
@@ -76,13 +74,71 @@ CREATE TABLE AppTransaction_Item (
 );
 
 
+-- Create the Ebay Table for storing Ebay accounts
+CREATE TABLE Ebay (
+    account_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULl,
+    client_id VARCHAR,
+    client_secret VARCHAR,
+    CONSTRAINT fk_user
+        FOREIGN KEY (user_id)
+        REFERENCES AppUser(user_id)
+);
+
+--- Create EbayItem table to store item data from Ebay
+CREATE TABLE EbayItem (
+    sku VARCHAR UNIQUE PRIMARY KEY,
+    item_id INT NOT NULL,
+    quantity INT DEFAULT,
+    ebay_item_id VARCHAR,
+    ebay_offer_id VARCHAR,
+    ebay_listing_id VARCHAR,
+    ebay_status VARCHAR,
+    last_synced_at TIMESTAMP,
+    source_of_truth VARCHAR,
+    ebay_account_id INT NOT NULL,
+    CONSTRAINT fk_item
+        FOREIGN KEY (item_id)
+        REFERENCES Item(item_id)
+    CONSTRAINT fk_ebay_account
+        FOREIGN KEY (ebay_account_id)
+        REFERENCES Ebay(account_id)
+);
+
+-- Create the Etsy Table for storing Etsy accounts
+CREATE TABLE Etsy (
+    account_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULl,
+    client_id VARCHAR,
+    client_secret VARCHAR,
+    CONSTRAINT fk_user
+        FOREIGN KEY (user_id)
+        REFERENCES AppUser(user_id)
+);
+
+--- Create EtsyItem table to store item data from Etsy
+--- WILL NEED TO BE CHANGED WHEN ETSY IS IMPLEMENTED
+CREATE TABLE EtsyItem (
+    sku VARCHAR UNIQUE PRIMARY KEY,
+    item_id INT NOT NULL,
+    quantity INT DEFAULT,
+    etsy_account_id INT NOT NULL,
+    CONSTRAINT fk_item
+        FOREIGN KEY (item_id)
+        REFERENCES Item(item_id)
+    CONSTRAINT fk_etsy_account
+        FOREIGN KEY (etsy_account_id)
+        REFERENCES Etsy(account_id)
+);
+
+
 ---
 
 -- ==========================================
--- INSERT TEST DATA (SERIAL / AUTO-INCREMENT KEYS)
+-- TEST DATA (SERIAL / AUTO-INCREMENT KEYS)
 -- ==========================================
 
--- 1. Organization
+-- Organization
 INSERT INTO Organization (name) VALUES
 ('TechCorp'),
 ('GreenSoft'),
@@ -90,7 +146,7 @@ INSERT INTO Organization (name) VALUES
 ('HealthWave'),
 ('AeroLabs');
 
--- 2. AppUser
+-- AppUser
 INSERT INTO AppUser (username, password, email, organization_id, organization_role) VALUES
 ('alice', 'pass123', 'alice@techcorp.com', (SELECT organization_id FROM Organization WHERE name='TechCorp'), 'Admin'),
 ('bob', 'securepwd', 'bob@greensoft.com', (SELECT organization_id FROM Organization WHERE name='GreenSoft'), 'Manager'),
@@ -98,7 +154,7 @@ INSERT INTO AppUser (username, password, email, organization_id, organization_ro
 ('dave', 'letmein', 'dave@healthwave.com', (SELECT organization_id FROM Organization WHERE name='HealthWave'), 'Analyst'),
 ('eve', 'mypassword', 'eve@aerolabs.com', (SELECT organization_id FROM Organization WHERE name='AeroLabs'), 'User');
 
--- 3. Item
+-- Item
 INSERT INTO Item (title, description, category, list_date, creator_id) VALUES
 ('Wireless Mouse', 'Ergonomic wireless mouse', 'Electronics', '2024-01-15', (SELECT user_id FROM AppUser WHERE username='alice')),
 ('Eco Bottle', 'Reusable eco-friendly water bottle', 'Lifestyle', '2024-02-10', (SELECT user_id FROM AppUser WHERE username='bob')),
@@ -106,23 +162,13 @@ INSERT INTO Item (title, description, category, list_date, creator_id) VALUES
 ('Heart Monitor', 'Wearable heart monitoring device', 'Health', '2024-04-01', (SELECT user_id FROM AppUser WHERE username='dave')),
 ('Drone Kit', 'DIY drone assembly kit', 'Technology', '2024-05-12', (SELECT user_id FROM AppUser WHERE username='eve'));
 
--- 4. Reseller
-INSERT INTO Reseller (reseller_name) VALUES
-('BestBuy'),
-('EcoMart'),
-('BookWorld'),
-('MediSupply'),
-('TechStore');
+-- AppTransaction
+INSERT INTO AppTransaction (sale_date, total, tax, seller_comission, seller_id) VALUES
+('2024-06-01', 120.00, 10.00, 5.00, (SELECT user_id FROM AppUser WHERE name='alice')),
+('2024-06-02', 45.00, 3.50, 2.00, (SELECT user_id FROM AppUser WHERE name='bob')),
+('2024-06-03', 80.00, 6.40, 4.00, (SELECT user_id FROM AppUser WHERE name='carol')),
 
--- 5. AppTransaction
-INSERT INTO AppTransaction (sale_date, total, tax, reseller_comission, reseller_id) VALUES
-('2024-06-01', 120.00, 10.00, 5.00, (SELECT reseller_id FROM Reseller WHERE reseller_name='BestBuy')),
-('2024-06-02', 45.00, 3.50, 2.00, (SELECT reseller_id FROM Reseller WHERE reseller_name='EcoMart')),
-('2024-06-03', 80.00, 6.40, 4.00, (SELECT reseller_id FROM Reseller WHERE reseller_name='BookWorld')),
-('2024-06-04', 300.00, 24.00, 15.00, (SELECT reseller_id FROM Reseller WHERE reseller_name='MediSupply')),
-('2024-06-05', 150.00, 12.00, 7.50, (SELECT reseller_id FROM Reseller WHERE reseller_name='TechStore'));
-
--- 6. AppTransaction_Item
+-- AppTransaction_Item
 INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
 ((SELECT item_id FROM Item WHERE title='Wireless Mouse'), (SELECT transaction_id FROM AppTransaction WHERE sale_date='2024-06-01')),
 ((SELECT item_id FROM Item WHERE title='Eco Bottle'), (SELECT transaction_id FROM AppTransaction WHERE sale_date='2024-06-02')),
