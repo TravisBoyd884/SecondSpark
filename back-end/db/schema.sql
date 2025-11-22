@@ -138,7 +138,7 @@ INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
 
 ALTER TABLE Item
   ADD COLUMN IF NOT EXISTS sku VARCHAR UNIQUE,
-  ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 0,
   ADD COLUMN IF NOT EXISTS ebay_item_id      VARCHAR,      -- eBay "itemId" or inventory item id
   ADD COLUMN IF NOT EXISTS ebay_offer_id     VARCHAR,      -- eBay Sell Inventory offer id
   ADD COLUMN IF NOT EXISTS ebay_listing_id   VARCHAR,      -- legacy listing id if needed
