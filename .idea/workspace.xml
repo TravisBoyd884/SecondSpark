@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="904d247d-f241-42be-86ee-6b45637ac50f" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/back-end/db/ebay_interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/db/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/db/README.txt" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/README.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/db/dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/db/interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/db/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/schema.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/docker-compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/docker-compose.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/tests/test_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/tests/test_routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/docker-compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/.dockerignore" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/.dockerignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/dashboard/account/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/dashboard/account/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/dashboard/items/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/dashboard/items/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/dashboard/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/dashboard/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/dashboard/organization/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/dashboard/organization/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/dashboard/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/dashboard/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/dashboard/transactions/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/dashboard/transactions/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/globals.css" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/globals.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/lib/definitions.ts" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/lib/definitions.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/lib/placeholder-data.ts" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/lib/placeholder-data.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/page.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/page.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/ui/dashboard/nav-links.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/ui/dashboard/nav-links.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/ui/dashboard/sidenav.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/ui/dashboard/sidenav.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/app/ui/secondspark-logo.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/app/ui/secondspark-logo.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/eslint.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/eslint.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/next.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/next.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/pnpm-lock.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/pnpm-lock.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/postcss.config.mjs" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/postcss.config.mjs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/tailwind.config.ts" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/tailwind.config.ts" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/front-end/tsconfig.json" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/tsconfig.json" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 0
+}</component>
+  <component name="ProjectId" id="35OO1MvapnwWpoU43qaGRYLixEV" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "git-widget-placeholder": "egibson",
+    "last_opened_file_path": "C:/Users/7530/Documents/GitHub/SecondSpark"
+  }
+}]]></component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="904d247d-f241-42be-86ee-6b45637ac50f" name="Changes" comment="" />
+      <created>1762977435687</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1762977435687</updated>
+    </task>
+    <servers />
+  </component>
+</project>

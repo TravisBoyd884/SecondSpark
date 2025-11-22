@@ -139,9 +139,4 @@ INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
 ALTER TABLE Item
   ADD COLUMN IF NOT EXISTS sku VARCHAR UNIQUE,
   ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 0;
-  ADD COLUMN IF NOT EXISTS ebay_item_id      VARCHAR,      -- eBay "itemId" or inventory item id
-  ADD COLUMN IF NOT EXISTS ebay_offer_id     VARCHAR,      -- eBay Sell Inventory offer id
-  ADD COLUMN IF NOT EXISTS ebay_listing_id   VARCHAR,      -- legacy listing id if needed
-  ADD COLUMN IF NOT EXISTS ebay_status       VARCHAR,      -- 'DRAFT','PUBLISHED','ENDED', etc.
-  ADD COLUMN IF NOT EXISTS last_synced_at    TIMESTAMP,    -- last time we synced with eBay
-  ADD COLUMN IF NOT EXISTS source_of_truth   VARCHAR;      -- 'LOCAL' or 'EBAY' (optional business rule)
+
