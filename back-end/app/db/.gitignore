@@ -1,0 +1,4 @@
+# Ignore temp file to denote db preperation
+.setup_done
+# Ignore pycache
+__pycache__/
