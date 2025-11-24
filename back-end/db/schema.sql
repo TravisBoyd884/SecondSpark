@@ -145,3 +145,49 @@ ALTER TABLE Item
   ADD COLUMN IF NOT EXISTS ebay_status       VARCHAR,      -- 'DRAFT','PUBLISHED','ENDED', etc.
   ADD COLUMN IF NOT EXISTS last_synced_at    TIMESTAMP,    -- last time we synced with eBay
   ADD COLUMN IF NOT EXISTS source_of_truth   VARCHAR;      -- 'LOCAL' or 'EBAY' (optional business rule)
+
+-- Adding private keys to DB instead of docker compose. Works for both EBAY and ETSY
+
+CREATE TABLE IF NOT EXISTS MarketplaceCredentials (
+    id SERIAL PRIMARY KEY,
+    organization_id INT REFERENCES Organization(organization_id) ON DELETE CASCADE,
+    platform VARCHAR NOT NULL,              -- EBAY', 'ETSY'
+    client_id VARCHAR NOT NULL,             -- For eBay: client_id; For Etsy: keystring/client_id
+    client_secret VARCHAR NOT NULL,         -- For OAuth-based APIs
+    environment VARCHAR NOT NULL DEFAULT 'sandbox',  -- 'sandbox'/'production' or 'test'/'live'
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Global (no org) eBay creds
+INSERT INTO MarketplaceCredentials (organization_id, platform, client_id, client_secret, environment)
+VALUES (NULL, 'EBAY', 'YOUR_EBAY_CLIENT_ID', 'YOUR_EBAY_CLIENT_SECRET', 'sandbox');
+
+-- Global Etsy creds
+INSERT INTO MarketplaceCredentials (organization_id, platform, client_id, client_secret, environment)
+VALUES (NULL, 'ETSY', 'YOUR_ETSY_CLIENT_ID', 'YOUR_ETSY_CLIENT_SECRET', 'sandbox');
+
+-- Command to store an encrypted version of the private keys instead of plain text in DB
+INSERT INTO MarketplaceCredentials (
+    platform,
+    client_id,
+    client_secret
+)
+
+VALUES (
+    'EBAY',
+    'myid',
+    pgp_sym_encrypt('mysecret', 'INSERT_ENCRYPTION_KEY')
+);
+
+-- Duplicated for Etsy (Not sure if direct duplicate is necessary)
+INSERT INTO MarketplaceCredentials (
+    platform,
+    client_id,
+    client_secret
+)
+
+VALUES (
+    'ETSY',
+    'myid',
+    pgp_sym_encrypt('mysecret', 'INSERT_ENCRYPTION_KEY')
+);

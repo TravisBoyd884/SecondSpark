@@ -5,14 +5,33 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="904d247d-f241-42be-86ee-6b45637ac50f" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/back-end/db/ebay_interface.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/back-end/db/etsy_interface.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/SecondSpark.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/SecondSpark.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/db/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/db/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/db/README.txt" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/db/README.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/db/dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/db/dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/db/interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/db/interface.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/db/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/db/schema.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/docker-compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/docker-compose.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/requirements.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/app/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/app/routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/db/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/db/README.txt" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/README.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/db/dockerfile" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/dockerfile" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/db/ebay_interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/ebay_interface.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/db/interface.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/interface.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/db/schema.sql" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/db/schema.sql" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/docker-compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/docker-compose.yaml" afterDir="false" />
@@ -20,6 +39,7 @@
       <change beforePath="$PROJECT_DIR$/back-end/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/main.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/routes.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/back-end/tests/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/tests/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/back-end/tests/test_routes.py" beforeDir="false" afterPath="$PROJECT_DIR$/back-end/tests/test_routes.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/docker-compose.yaml" beforeDir="false" afterPath="$PROJECT_DIR$/docker-compose.yaml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/front-end/.dockerignore" beforeDir="false" afterPath="$PROJECT_DIR$/front-end/.dockerignore" afterDir="false" />
@@ -77,7 +97,7 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "git-widget-placeholder": "egibson",
+    "git-widget-placeholder": "external__stores",
     "last_opened_file_path": "C:/Users/7530/Documents/GitHub/SecondSpark"
   }
 }]]></component>
