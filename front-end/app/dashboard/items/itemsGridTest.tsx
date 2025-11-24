@@ -16,7 +16,31 @@ export default function ItemsGridTest() {
     }, []);
 
     const refreshItems = async () => {
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${apiBaseUrl}/items`);
+            
+            if (!response.ok) {
+                console.error('Failed to fetch items');
+                return;
+            }
 
+            const fetchedItems = await response.json();
+            // Map API response to Item type, converting types and adding defaults
+            const itemsWithDefaults: Item[] = fetchedItems.map((item: any) => ({
+                item_id: String(item.item_id),
+                title: item.title || '',
+                description: item.description || '',
+                category: item.category || '',
+                list_date: item.list_date || '',
+                isOnEtsy: item.isOnEtsy || false,
+                isOnEbay: item.isOnEbay || false,
+                creator_id: String(item.creator_id || ''),
+            }));
+            setItems(itemsWithDefaults);
+        } catch (error) {
+            console.error('Error fetching items:', error);
+        }
     }
   
     const handleViewItem = (item: Item) => {
@@ -26,14 +50,99 @@ export default function ItemsGridTest() {
   
     const handleCloseModal = () => {
       setShowModal(false);
+      setSelectedItem(null);
     }
   
     const handleDeleteItem = () => {
   
     }
 
-    const handleSaveItem = () => {
-  
+    const handleSaveItem = async (updatedItem: Partial<Item>) => {
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            
+            if (updatedItem.item_id) {
+                // Update existing item - convert item_id to number for API
+                const itemId = parseInt(updatedItem.item_id, 10);
+                if (isNaN(itemId)) {
+                    alert('Invalid item ID');
+                    return;
+                }
+
+                const response = await fetch(`${apiBaseUrl}/items/${itemId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        description: updatedItem.description,
+                        category: updatedItem.category,
+                        // Note: API doesn't support updating title, list_date, or creator_id in PUT endpoint
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('Failed to update item:', error);
+                    alert(`Failed to update item: ${error.error || 'Unknown error'}`);
+                    return;
+                }
+
+                const savedItem = await response.json();
+                console.log('Item updated successfully:', savedItem);
+            } else {
+                // Create new item
+                if (!updatedItem.title || !updatedItem.creator_id) {
+                    alert('Title and Creator ID are required to create a new item');
+                    return;
+                }
+
+                // Convert creator_id to number for API (API expects INT)
+                const creatorId = parseInt(updatedItem.creator_id, 10);
+                if (isNaN(creatorId)) {
+                    alert('Creator ID must be a valid number');
+                    return;
+                }
+
+                const response = await fetch(`${apiBaseUrl}/items`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: updatedItem.title,
+                        description: updatedItem.description,
+                        category: updatedItem.category,
+                        list_date: updatedItem.list_date,
+                        creator_id: creatorId,
+                    }),
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error('Failed to create item:', error);
+                    alert(`Failed to create item: ${error.error || 'Unknown error'}`);
+                    return;
+                }
+
+                const savedItem = await response.json();
+                console.log('Item created successfully:', savedItem);
+            }
+
+            // Refresh items list
+            await refreshItems();
+            // Close modal
+            setShowModal(false);
+            setSelectedItem(null);
+        } catch (error) {
+            console.error('Error saving item:', error);
+            alert('An error occurred while saving the item');
+        }
+    }
+
+    const handleCreateItem = async () => {
+        setSelectedItem(null);
+        setShowModal(true);
     }
 
     return (
