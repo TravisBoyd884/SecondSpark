@@ -9,7 +9,7 @@ export default function ItemsGridTest() {
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [showModal, setShowModal] = useState(false);
-
+    const [search, setSearch] = useState('');
     useEffect(() => {
         setItems(item);
         refreshItems();
@@ -53,8 +53,23 @@ export default function ItemsGridTest() {
       setSelectedItem(null);
     }
   
-    const handleDeleteItem = () => {
-  
+    const handleDeleteItem = async () => {
+        console.log('Delete item');
+        console.log(selectedItem);
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+        const response = await fetch(`${apiBaseUrl}/items/${selectedItem?.item_id}`, {
+            method: 'DELETE',
+        });
+        if (!response.ok) {
+            console.error('Failed to delete item');
+            return;
+        }
+        const data = await response.json();
+        console.log(data);
+        await refreshItems();
+        setShowModal(false);
+        setSelectedItem(null);
     }
 
     const handleSaveItem = async (updatedItem: Partial<Item>) => {
@@ -62,7 +77,6 @@ export default function ItemsGridTest() {
             const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
             
             if (updatedItem.item_id) {
-                // Update existing item - convert item_id to number for API
                 const itemId = parseInt(updatedItem.item_id, 10);
                 if (isNaN(itemId)) {
                     alert('Invalid item ID');
@@ -77,7 +91,6 @@ export default function ItemsGridTest() {
                     body: JSON.stringify({
                         description: updatedItem.description,
                         category: updatedItem.category,
-                        // Note: API doesn't support updating title, list_date, or creator_id in PUT endpoint
                     }),
                 });
 
@@ -141,14 +154,26 @@ export default function ItemsGridTest() {
     }
 
     const handleCreateItem = async () => {
-        setSelectedItem(null);
+        setSelectedItem({
+            item_id: '',
+            title: '',
+            description: '',
+            category: '',
+            list_date: '',
+            isOnEtsy: false,
+            isOnEbay: false,
+            creator_id: '',
+        });
         setShowModal(true);
     }
 
     return (
         <div>
+            <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer mb-4 ml-4 mr-4" onClick={handleCreateItem}>Create Item</button>
+            <input type="text" className="border border-gray-300 rounded-md px-3 py-2 mb-4 ml-4 mr-4 w-4/5" placeholder="Search items" onChange={(e) => setSearch(e.target.value)} />
             <div className="flex flex-wrap justify-content-center gap-4 mt-4 mb-4">
                 <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} onSave={handleSaveItem} />
+                
                 {items.map((item) => (
                     <div className="card p-4 shadow-sm rounded-md" key={item.item_id}>
                         <h2 className="text-lg font-bold">{item.title}</h2>
