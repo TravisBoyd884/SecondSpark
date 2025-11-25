@@ -3,15 +3,9 @@
 from flask import Blueprint, request, jsonify
 from db.interface import db_interface  # Our DB interface class
 
-# Optional eBay integration
-try:
-    from db.ebay_interface import EbayInterface, EbayAPIError
-except Exception:  # ImportError or misconfig
-    EbayInterface = None
-
-    class EbayAPIError(Exception):
-        pass
-
+# eBay and Etsy integration
+from db.ebay_interface import EbayInterface, EbayAPIError
+from db.etsy_interface import EtsyInterface, EtsyAPIError
 
 api = Blueprint("api", __name__)  # This stays global
 
@@ -20,15 +14,45 @@ class APIRoutes:
     def __init__(self):
         self.db = db_interface()
 
-        # Try to initialize eBay integration (optional)
         self.ebay = None
-        if EbayInterface is not None:
-            try:
-                self.ebay = EbayInterface()
-                print("[INFO] eBay integration enabled.")
-            except Exception as e:
-                self.ebay = None
-                print(f"[WARN] eBay integration disabled: {e}")
+        self.etsy = None
+
+        # ---- eBay credentials from DB ----
+        try:
+            ebay_creds = self.db.get_marketplace_credentials("EBAY", organization_id=None)
+            if ebay_creds:
+                ebay_client_id, ebay_client_secret, ebay_env = ebay_creds
+                self.ebay = EbayInterface(
+                    client_id=ebay_client_id,
+                    client_secret=ebay_client_secret,
+                    env=ebay_env,
+                )
+                print("[INFO] eBay integration enabled from DB credentials.")
+            else:
+                print("[WARN] No eBay credentials found; eBay integration disabled.")
+        except Exception as e:
+            print(f"[WARN] eBay integration disabled: {e}")
+
+        # ---- Etsy credentials from DB ----
+        try:
+            etsy_creds = self.db.get_marketplace_credentials("ETSY", organization_id=None)
+            if etsy_creds:
+                etsy_client_id, etsy_client_secret, etsy_env = etsy_creds
+
+                # TODO: wire in shop_id + access_token however you're storing them.
+                # For now, stub with placeholder or additional columns in MarketplaceCredentials.
+                self.etsy = EtsyInterface(
+                    client_id=etsy_client_id,
+                    client_secret=etsy_client_secret,
+                    env=etsy_env,
+                    shop_id="YOUR_SHOP_ID_HERE",
+                    access_token="YOUR_ACCESS_TOKEN_HERE",
+                )
+                print("[INFO] Etsy integration enabled from DB credentials.")
+            else:
+                print("[WARN] No Etsy credentials found; Etsy integration disabled.")
+        except Exception as e:
+            print(f"[WARN] Etsy integration disabled: {e}")
 
         self.register_routes()
 
@@ -233,7 +257,7 @@ class APIRoutes:
                 "price": str(price) if price is not None else "0.00",
             }
 
-            # Push to eBay if integration is enabled
+            # Push to eBay
             if self.ebay and item_dict["sku"]:
                 try:
                     ebay_result = self.ebay.sync_item_create_or_update(item_dict)
@@ -243,6 +267,16 @@ class APIRoutes:
                     item["ebay_sync"] = "failed"
                     item["ebay_error"] = str(e)
 
+            # Same for Etsy
+            if self.etsy:
+                try:
+                    etsy_result = self.etsy.sync_item_create_or_update(item_dict)
+                    item["etsy_sync"] = "ok"
+                    item["etsy_response"] = etsy_result
+                    # TODO: item["etsy_listing_id"] = etsy_result.get("listing_id")
+                except EtsyAPIError as e:
+                    item["etsy_sync"] = "failed"
+                    item["etsy_error"] = str(e)
             return jsonify(item), 201
 
         @api.route("/items/<int:item_id>", methods=["PUT", "PATCH"])
@@ -302,6 +336,7 @@ class APIRoutes:
                 "price": str(price) if price is not None else "0.00",
             }
 
+            # Push to eBay (Same routine as create_item)
             if self.ebay and item_dict["sku"]:
                 try:
                     ebay_result = self.ebay.sync_item_create_or_update(item_dict)
@@ -310,6 +345,17 @@ class APIRoutes:
                 except EbayAPIError as e:
                     item["ebay_sync"] = "failed"
                     item["ebay_error"] = str(e)
+
+            # Same for Etsy
+            if self.etsy:
+                try:
+                    etsy_result = self.etsy.sync_item_create_or_update(item_dict)
+                    item["etsy_sync"] = "ok"
+                    item["etsy_response"] = etsy_result
+                    # TODO: item["etsy_listing_id"] = etsy_result.get("listing_id")
+                except EtsyAPIError as e:
+                    item["etsy_sync"] = "failed"
+                    item["etsy_error"] = str(e)
 
             return jsonify(item), 200
 
@@ -337,6 +383,16 @@ class APIRoutes:
             else:
                 ebay_status = "not_configured"
 
+            # Same routine for Etsy
+            if self.etsy:
+                try:
+                    self.etsy.sync_item_delete(item)
+                    etsy_status = "ok"
+                except EtsyAPIError as e:
+                    etsy_status = f"failed: {e}"
+            else:
+                etsy_status = "not_configured"
+
             success = self.db.delete_item(item_id)
             if not success:
                 return jsonify({"error": f"Failed to delete item {item_id}"}), 500
@@ -345,6 +401,7 @@ class APIRoutes:
                 {
                     "message": f"Item {item_id} deleted successfully",
                     "ebay_sync": ebay_status,
+                    "etsy_sync": etsy_status,
                 }
             ), 200
 

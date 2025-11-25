@@ -21,9 +21,6 @@ services:
       DB_PASSWORD: password # Password for db
       DB_PORT: 5432
       DB_SETUP_STAT: 0
-      
-      EBAY_CLIENT_ID: "GibsonRe-SecondSp-SBX-970cc83be-50aef890"
-      EBAY_CLIENT_SECRET: "SBX-70cc83be212b-f1f3-45e1-96de-d258"
-      EBAY_ENV: "sandbox"
+
     depends_on:
       - db

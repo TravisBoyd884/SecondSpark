@@ -125,7 +125,7 @@ class db_interface(object):
 
 
     # General method for PostgreSQL queries ------------------------------------------------------------------------
-    def execute_query(self, sql, params=None ,fetch_one=False, fetch_all=False, commit=False):
+    def execute_query(self, sql, params=None, fetch_one=False, fetch_all=False, commit=False, e=None):
         try:
             result = None
             conn = self.pool.get_conn()
@@ -424,3 +424,39 @@ class db_interface(object):
 
     # Note: A 'get_all_users' is usually omitted or protected for security reasons.
     # Note: Listing all transactions might be too slow/large and is usually limited by date/pagination.
+
+    # Marketplace credentials ------------------------------------------------------------------
+
+    def get_marketplace_credentials(self, platform: str, organization_id: int | None = None):
+        """
+        Returns (client_id, client_secret, environment) for the given platform and org.
+        If organization_id is None, returns the latest global credentials for that platform.
+        """
+        platform = platform.upper()
+
+        if organization_id is not None:
+            sql = """
+                SELECT client_id, client_secret, environment
+                FROM MarketplaceCredentials
+                WHERE platform = %s AND organization_id = %s
+                ORDER BY id DESC
+                LIMIT 1;
+            """
+            params = (platform, organization_id)
+        else:
+            sql = """
+                SELECT client_id, client_secret, environment
+                FROM MarketplaceCredentials
+                WHERE platform = %s AND organization_id IS NULL
+                ORDER BY id DESC
+                LIMIT 1;
+            """
+            params = (platform,)
+
+        return self.execute_query(sql, params=params, fetch_one=True)
+
+    def get_ebay_credentials(self, organization_id: int | None = None):
+        return self.get_marketplace_credentials("EBAY", organization_id)
+    
+    def get_etsy_credentials(self, organization_id: int | None = None):
+        return self.get_marketplace_credentials("ETSY", organization_id)
