@@ -4,8 +4,8 @@ from flask import Blueprint, request, jsonify
 from db.interface import db_interface  # Our DB interface class
 
 # eBay and Etsy integration
-from db.ebay_interface import EbayInterface, EbayAPIError
-from db.etsy_interface import EtsyInterface, EtsyAPIError
+from utils.ebay_interface import EbayInterface, EbayAPIError
+from utils.etsy_interface import EtsyInterface, EtsyAPIError
 
 api = Blueprint("api", __name__)  # This stays global
 
