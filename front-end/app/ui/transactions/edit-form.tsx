@@ -104,7 +104,7 @@ export default function EditInvoiceForm(
         {/* Invoice Status */}
         <fieldset>
           <legend className="mb-2 block text-sm font-medium">
-            Set the invoice status
+            Set the transaction status
           </legend>
           <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
             <div className="flex gap-4">
@@ -161,7 +161,7 @@ export default function EditInvoiceForm(
         >
           Cancel
         </Link>
-        <Button type="submit">Edit Invoice</Button>
+        <Button type="submit">Edit Transaction</Button>
       </div>
     </form>
   );
