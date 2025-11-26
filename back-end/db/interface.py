@@ -243,14 +243,14 @@ class db_interface(object):
 
     # Item CRUD ------------------------------------------------------------------------------------------------
 
-    def create_item(self, title: str, description: str, category: str, list_date: str, creator_id: int) -> bool:
+    def create_item(self, title: str, price: float, description: str, category: str, list_date: str, creator_id: int) -> bool:
         """Inserts a new item into the Item table."""
-        sql = "INSERT INTO Item (title, description, category, list_date, creator_id) VALUES (%s, %s, %s, %s, %s);"
-        return self._execute_dml(sql, (title, description, category, list_date, creator_id))
+        sql = "INSERT INTO Item (title, price, description , category, list_date, creator_id) VALUES (%s, %s, %s, %s, %s, %s);"
+        return self._execute_dml(sql, (title, price, description, category, list_date, creator_id))
 
     def get_item_by_id(self, item_id: int):
         """Retrieves an item record by its ID."""
-        sql = "SELECT item_id, title, description, category, list_date, creator_id FROM Item WHERE item_id = %s;"
+        sql = "SELECT item_id, title, price, description, category, list_date, creator_id FROM Item WHERE item_id = %s;"
         return self.execute_query(sql, params=(item_id,), fetch_one=True)
 
     def update_item_details(self, item_id: int, description: str, category: str) -> bool:
@@ -263,29 +263,6 @@ class db_interface(object):
         # Note: Will fail if the item is linked to any AppTransaction_Item due to FK constraint.
         sql = "DELETE FROM Item WHERE item_id = %s;"
         return self._execute_dml(sql, (item_id,))
-
-    # Reseller CRUD --------------------------------------------------------------------------------------------
-
-    def create_reseller(self, reseller_name: str) -> bool:
-        """Inserts a new reseller into the Reseller table."""
-        sql = "INSERT INTO Reseller (reseller_name) VALUES (%s);"
-        return self._execute_dml(sql, (reseller_name,))
-
-    def get_reseller_by_id(self, reseller_id: int):
-        """Retrieves a reseller record by its ID."""
-        sql = "SELECT reseller_id, reseller_name FROM Reseller WHERE reseller_id = %s;"
-        return self.execute_query(sql, params=(reseller_id,), fetch_one=True)
-
-    def update_reseller_name(self, reseller_id: int, new_name: str) -> bool:
-        """Updates the name of an existing reseller."""
-        sql = "UPDATE Reseller SET reseller_name = %s WHERE reseller_id = %s;"
-        return self._execute_dml(sql, (new_name, reseller_id))
-
-    def delete_reseller(self, reseller_id: int) -> bool:
-        """Deletes a reseller record by its ID."""
-        # Note: Will fail if the reseller is linked to any AppTransaction due to FK constraint.
-        sql = "DELETE FROM Reseller WHERE reseller_id = %s;"
-        return self._execute_dml(sql, (reseller_id,))
 
     # AppTransaction CRUD --------------------------------------------------------------------------------------
 

@@ -33,6 +33,7 @@ CREATE TABLE AppUser (
 CREATE TABLE Item (
     item_id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
+    price MONEY,
     description VARCHAR(255),
     category VARCHAR(255),
     list_date DATE,
