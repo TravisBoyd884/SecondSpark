@@ -251,6 +251,11 @@ class DBInterface:
         sql = "SELECT * FROM Item;"
         return self.execute_query(sql, fetch_all=True)
 
+    def get_all_items_by_appuser_id(self, user_id: int):
+        """Retrieves all Item records created by the specified AppUser (user_id is mapped to creator_id)."""
+        sql = "SELECT item_id, title, price, description, category, list_date, creator_id FROM Item WHERE creator_id = %s;"
+        return self.execute_query(sql, params=(user_id,), fetch_all=True)
+
     def update_item(self, item_id: int, title: str, price: float, description: str, category: str, list_date: str) -> bool:
         """Updates all mutable details of an existing item."""
         sql = "UPDATE Item SET title = %s, price = %s, description = %s, category = %s, list_date = %s WHERE item_id = %s;"

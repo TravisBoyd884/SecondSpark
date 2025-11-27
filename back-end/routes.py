@@ -141,6 +141,16 @@ class APIRoutes:
 
             items = [self._item_row_to_dict(row) for row in rows]
             return jsonify(items), 200
+
+        @api.route("/users/<int:user_id>/items", methods=["GET"])
+        def get_user_items(user_id):
+            """Retrieves all Item records created by the specified AppUser."""
+            rows = self.db.get_all_items_by_appuser_id(user_id)
+            if not rows:
+                return jsonify([]), 200
+            
+            items = [self._item_row_to_dict(row) for row in rows]
+            return jsonify(items), 200
         
         # NEW ROUTE: Get all items associated with an AppUser (Item creator)
         @api.route("/users/<int:user_id>/items", methods=["GET"])
