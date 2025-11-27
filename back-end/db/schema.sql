@@ -33,6 +33,7 @@ CREATE TABLE AppUser (
 CREATE TABLE Item (
     item_id SERIAL PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
+    price MONEY,
     description VARCHAR(255),
     category VARCHAR(255),
     list_date DATE,
@@ -87,6 +88,7 @@ CREATE TABLE Ebay (
     user_id INT NOT NULL,
     client_id VARCHAR(255),
     client_secret VARCHAR(255),
+    environment VARCHAR(255) NOT NULL DEFAULT 'sandbox',
 
     CONSTRAINT fk_ebay_user
         FOREIGN KEY (user_id)
@@ -102,6 +104,7 @@ CREATE TABLE Etsy (
     user_id INT NOT NULL,
     client_id VARCHAR(255),
     client_secret VARCHAR(255),
+    environment VARCHAR(255) NOT NULL,
 
     CONSTRAINT fk_etsy_user
         FOREIGN KEY (user_id)
@@ -207,7 +210,6 @@ INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
 ((SELECT item_id FROM Item WHERE title='Wireless Mouse'),
  (SELECT transaction_id FROM AppTransaction WHERE sale_date='2024-06-01')),
 
-<<<<<<< HEAD
 ((SELECT item_id FROM Item WHERE title='Eco Bottle'),
  (SELECT transaction_id FROM AppTransaction WHERE sale_date='2024-06-02')),
 
@@ -219,20 +221,3 @@ INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
 
 
 -- END OF TEST DATA
-=======
--- ==========================================
--- END OF TEST DATA INSERTS
--- ==========================================
-
--- Table Schema Modifications (To support eBay API's)
-
-ALTER TABLE Item
-  ADD COLUMN IF NOT EXISTS sku VARCHAR UNIQUE,
-  ADD COLUMN IF NOT EXISTS quantity INT DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS ebay_item_id      VARCHAR,      -- eBay "itemId" or inventory item id
-  ADD COLUMN IF NOT EXISTS ebay_offer_id     VARCHAR,      -- eBay Sell Inventory offer id
-  ADD COLUMN IF NOT EXISTS ebay_listing_id   VARCHAR,      -- legacy listing id if needed
-  ADD COLUMN IF NOT EXISTS ebay_status       VARCHAR,      -- 'DRAFT','PUBLISHED','ENDED', etc.
-  ADD COLUMN IF NOT EXISTS last_synced_at    TIMESTAMP,    -- last time we synced with eBay
-  ADD COLUMN IF NOT EXISTS source_of_truth   VARCHAR;      -- 'LOCAL' or 'EBAY' (optional business rule)
->>>>>>> main
