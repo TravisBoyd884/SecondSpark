@@ -14,5 +14,17 @@ client_secret and client_id.
 
 `EBAY_ENV=[environment-type]`
 
-*Evironment types may be sandbox or production*
+`ETSY_CLIENT_ID=[your-client-id]`
+
+`ETSY_CLIENT_SECRET=[your-client-secret]`
+
+`ETSY_ENV=[environment-type]`
+
+`ETST_ACCESS_TOKEN=[token]`
+
+`ETSY_SHOP_ID=[id]`
+
+*Evironment types (for ETSY_ENV or EBAY_ENV) may be sandbox or production*
+
+*Etsy access token and shop id are optional*
 

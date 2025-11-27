@@ -27,15 +27,15 @@ class EbayInterface:
 
     def __init__(self, marketplace_id: str = "EBAY_US"):
         # load environment variables from '.env' file
-        load_dotenv(dotenv_path=".env")
-        self.client_id = os.getenv("EBAY_CLIENT_ID")
-        self.client_secret = os.getenv("EBAY_CLIENT_SECRET")
-        # Get environment type for the Ebay api (sandbox or production)
-        self.env = os.getenv("EBAY_ENV").lower()
-        self.marketplace_id = marketplace_id
-
-        if not self.client_id or not self.client_secret:
-            raise EbayAPIError("Missing eBay API credentials (EBAY_CLIENT_ID / EBAY_CLIENT_SECRET).")
+        if (os.path.exists(".env")):
+            load_dotenv(dotenv_path=".env")
+            self.client_id = os.getenv("EBAY_CLIENT_ID")
+            self.client_secret = os.getenv("EBAY_CLIENT_SECRET")
+            # Get environment type for the Ebay api (sandbox or production)
+            self.env = os.getenv("EBAY_ENV").lower()
+            self.marketplace_id = marketplace_id
+        else:
+            raise EbayAPIError("Unable to locate/read .env file.")
 
         # OAuth token cache
         self._access_token: Optional[str] = None

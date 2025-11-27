@@ -2,7 +2,9 @@
 
 import time
 import logging
+import os
 from typing import Any, Dict, Optional
+from dotenv import load_dotenv
 
 import requests
 
@@ -13,22 +15,21 @@ class EtsyAPIError(Exception):
 
 
 class EtsyInterface:
-    def __init__(
-        self,
-            client_id: str,
-            client_secret: str,
-            env: str = "production",
-            shop_id: Optional[str] = None,
-            access_token: Optional[str] = None,
-    ):
-        if not client_id or not client_secret:
-            raise EtsyAPIError("Missing Etsy API credentials")
-
-        self.client_id = client_id
-        self.client_secret = client_secret
-        self.env = env.lower()
-        self.shop_id = shop_id
-        self.access_token = access_token  # for now assume we have one
+    def __init__(self):
+        # load environment variables from '.env' file
+        if (os.path.exists(".env")):
+            load_dotenv(dotenv_path=".env")
+            self.client_id = os.getenv("ETSY_CLIENT_ID")
+            self.client_secret = os.getenv("ETSY_CLIENT_SECRET")
+            # Get environment type for the Ebay api (sandbox or production)
+            self.env = os.getenv("ETSY_ENV").lower()
+            try:
+                self.shop_id = os.getenv("ETSY_SHOP_ID")
+                self.access_token = os.getenv("ETSY_ACCESS_TOKEN")
+            except:
+                print(f"[NOTICE] Etsy shop id and access token not provided")
+        else:
+            raise EtsyAPIError("Unable to locate/read .env file.")
 
         self.logger = logging.getLogger(__name__)
         self.session = requests.Session()
