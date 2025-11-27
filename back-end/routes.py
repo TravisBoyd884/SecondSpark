@@ -1,7 +1,7 @@
 # app/routes.py
 
 from flask import Blueprint, request, jsonify
-from db.interface import db_interface  # Our DB interface class
+from db.interface import DBInterface  # Our DB interface class
 
 # eBay and Etsy integration
 from utils.ebay_interface import EbayInterface, EbayAPIError
@@ -12,7 +12,7 @@ api = Blueprint("api", __name__)  # This stays global
 
 class APIRoutes:
     def __init__(self):
-        self.db = db_interface()
+        self.db = DBInterface()
 
         self.ebay = None
         self.etsy = None
