@@ -3,7 +3,7 @@
 from flask import Blueprint, request, jsonify
 from db.interface import DBInterface  # Our DB interface class
 
-# eBay and Etsy integration
+# eBay and Etsy integration (kept for future use, but initialization logic is removed)
 from utils.ebay_interface import EbayInterface, EbayAPIError
 from utils.etsy_interface import EtsyInterface, EtsyAPIError
 
@@ -12,105 +12,79 @@ api = Blueprint("api", __name__)  # This stays global
 
 class APIRoutes:
     def __init__(self):
+        # NOTE: The DBInterface class now uses RealDictCursor, so all fetch_one/fetch_all 
+        # calls return dictionaries (or a list of dictionaries).
         self.db = DBInterface()
 
         self.ebay = None
         self.etsy = None
 
-        # ---- eBay credentials from DB ----
-        try:
-            ebay_creds = self.db.get_marketplace_credentials("EBAY", organization_id=None)
-            if ebay_creds:
-                ebay_client_id, ebay_client_secret, ebay_env = ebay_creds
-                self.ebay = EbayInterface(
-                    client_id=ebay_client_id,
-                    client_secret=ebay_client_secret,
-                    env=ebay_env,
-                )
-                print("[INFO] eBay integration enabled from DB credentials.")
-            else:
-                print("[WARN] No eBay credentials found; eBay integration disabled.")
-        except Exception as e:
-            print(f"[WARN] eBay integration disabled: {e}")
-
-        # ---- Etsy credentials from DB ----
-        try:
-            etsy_creds = self.db.get_marketplace_credentials("ETSY", organization_id=None)
-            if etsy_creds:
-                etsy_client_id, etsy_client_secret, etsy_env = etsy_creds
-
-                # TODO: wire in shop_id + access_token however you're storing them.
-                # For now, stub with placeholder or additional columns in MarketplaceCredentials.
-                self.etsy = EtsyInterface(
-                    client_id=etsy_client_id,
-                    client_secret=etsy_client_secret,
-                    env=etsy_env,
-                    shop_id="YOUR_SHOP_ID_HERE",
-                    access_token="YOUR_ACCESS_TOKEN_HERE",
-                )
-                print("[INFO] Etsy integration enabled from DB credentials.")
-            else:
-                print("[WARN] No Etsy credentials found; Etsy integration disabled.")
-        except Exception as e:
-            print(f"[WARN] Etsy integration disabled: {e}")
+        # WARNING: MARKETPLACE CREDENTIALS REFACTORING
+        # The logic below for fetching global credentials has been removed 
+        # as the 'MarketplaceCredentials' table is not in your schema.
+        print("[WARN] Global marketplace credential fetching removed. Implement per-user auth.")
 
         self.register_routes()
 
     # ------------------------------------------------------------------
-    # Helper methods
+    # Helper methods 
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _item_row_to_dict(row):
+    def _safe_money_to_float(money_str):
         """
-        Convert an Item row (SELECT item_id, title, description, category,
-        list_date, creator_id, sku, quantity) into a JSON-serializable dict.
+        Safely converts a PostgreSQL MONEY string (e.g., '$120.00') to a float.
+        """
+        if money_str is None:
+            return None
+        try:
+            # Strip currency symbols, commas (thousands separators), and spaces
+            cleaned_str = str(money_str).strip().replace('$', '').replace('£', '').replace('€', '').replace(',', '')
+            return float(cleaned_str)
+        except ValueError:
+            return None
+    
+    @staticmethod
+    def _item_row_to_dict(row: dict):
+        """
+        Convert an Item row (dictionary) into a JSON-serializable dict.
         """
         if row is None:
             return None
 
-        # row is a tuple in fixed order
-        item_id, title, description, category, list_date, creator_id, sku, quantity = row
         return {
-            "item_id": item_id,
-            "title": title,
-            "description": description,
-            "category": category,
-            "list_date": list_date.isoformat() if list_date else None,
-            "creator_id": creator_id,
-            "sku": sku,
-            "quantity": quantity,
+            "item_id": row.get("item_id"),
+            "title": row.get("title"),
+            "price": APIRoutes._safe_money_to_float(row.get("price")) if row.get("price") else None,
+            "description": row.get("description"),
+            "category": row.get("category"),
+            "list_date": row.get("list_date").isoformat() if row.get("list_date") else None,
+            "creator_id": row.get("creator_id"),
         }
 
     @staticmethod
-    def _org_row_to_dict(row):
-        # SELECT organization_id, name FROM Organization;
+    def _org_row_to_dict(row: dict):
         if row is None:
             return None
-        organization_id, name = row
-        return {"organization_id": organization_id, "name": name}
+        return {"organization_id": row.get("organization_id"), "name": row.get("name")}
 
     @staticmethod
-    def _reseller_row_to_dict(row):
-        # SELECT reseller_id, reseller_name FROM Reseller;
+    def _transaction_row_to_dict(row: dict):
+        """
+        Converts AppTransaction row to a dict.
+        NOTE: The output keys are mapped back to 'reseller_id' and 'reseller_comission'
+              to ensure compatibility with the existing test_routes.py file.
+        """
         if row is None:
             return None
-        reseller_id, reseller_name = row
-        return {"reseller_id": reseller_id, "reseller_name": reseller_name}
-
-    @staticmethod
-    def _transaction_row_to_dict(row):
-        # SELECT transaction_id, sale_date, total, tax, reseller_comission, reseller_id FROM AppTransaction;
-        if row is None:
-            return None
-        transaction_id, sale_date, total, tax, reseller_comission, reseller_id = row
+        
         return {
-            "transaction_id": transaction_id,
-            "sale_date": sale_date.isoformat() if sale_date else None,
-            "total": float(total) if total is not None else None,
-            "tax": float(tax) if tax is not None else None,
-            "reseller_comission": float(reseller_comission) if reseller_comission is not None else None,
-            "reseller_id": reseller_id,
+            "transaction_id": row.get("transaction_id"),
+            "sale_date": row.get("sale_date").isoformat() if row.get("sale_date") else None,
+            "total": APIRoutes._safe_money_to_float(row.get("total")),
+            "tax": APIRoutes._safe_money_to_float(row.get("tax")),
+            "reseller_comission": APIRoutes._safe_money_to_float(row.get("seller_comission")),
+            "reseller_id": row.get("seller_id"),
         }
 
     # ------------------------------------------------------------------
@@ -130,23 +104,22 @@ class APIRoutes:
             if not username or not password:
                 return jsonify({"error": "Username and password are required"}), 400
 
-            user_row = self.db.get_user_by_username(username)
+            user_row = self.db.get_app_user_by_username(username)
             if not user_row:
                 return jsonify({"error": "Invalid username or password"}), 401
-
-            # user_row = (user_id, username, password, email, organization_id, organization_role)
-            user_id, db_username, db_password, email, organization_id, organization_role = user_row
+            
+            db_password = user_row["password"]
 
             # NOTE: plain-text comparison; replace with hashed auth in production
             if password != db_password:
                 return jsonify({"error": "Invalid username or password"}), 401
 
             user = {
-                "user_id": user_id,
-                "username": db_username,
-                "email": email,
-                "organization_id": organization_id,
-                "organization_role": organization_role,
+                "user_id": user_row["user_id"],
+                "username": user_row["username"],
+                "email": user_row["email"],
+                "organization_id": user_row["organization_id"],
+                "organization_role": user_row["organization_role"],
             }
             return jsonify({"message": "Login successful", "user": user}), 200
 
@@ -160,32 +133,24 @@ class APIRoutes:
             if not rows:
                 return jsonify([]), 200
 
-            # get_all_items currently selects:
-            #   item_id, title, description, category, list_date, creator_id
-            items = []
-            for row in rows:
-                item_id, title, description, category, list_date, creator_id = row
-                items.append(
-                    {
-                        "item_id": item_id,
-                        "title": title,
-                        "description": description,
-                        "category": category,
-                        "list_date": list_date.isoformat() if list_date else None,
-                        "creator_id": creator_id,
-                    }
-                )
+            items = [self._item_row_to_dict(row) for row in rows]
             return jsonify(items), 200
+        
+        # NEW ROUTE: Get all items associated with an AppUser (Item creator)
+        @api.route("/users/<int:user_id>/items", methods=["GET"])
+        def get_user_items(user_id):
+            """Retrieves all Item records created by the specified AppUser."""
+            rows = self.db.get_all_items_by_appuser_id(user_id)
+            if not rows:
+                return jsonify([]), 200
+            
+            items = [self._item_row_to_dict(row) for row in rows]
+            return jsonify(items), 200
+
 
         @api.route("/items/<int:item_id>", methods=["GET"])
         def get_item(item_id):
-            # Custom query including sku & quantity
-            sql = """
-                SELECT item_id, title, description, category, list_date, creator_id, sku, quantity
-                FROM Item
-                WHERE item_id = %s;
-            """
-            row = self.db.execute_query(sql, params=(item_id,), fetch_one=True)
+            row = self.db.get_item_by_id(item_id)
             if not row:
                 return jsonify({"error": f"Item {item_id} not found"}), 404
 
@@ -197,201 +162,77 @@ class APIRoutes:
             data = request.get_json(force=True) or {}
 
             title = data.get("title")
+            price = data.get("price")
             description = data.get("description")
             category = data.get("category")
-            list_date = data.get("list_date")  # "YYYY-MM-DD" or let DB cast
+            list_date = data.get("list_date") 
             creator_id = data.get("creator_id")
-
-            sku = data.get("sku")
-            quantity = data.get("quantity", 0)
-            price = data.get("price")  # optional, used for eBay
-
+            
             if not title or not creator_id:
                 return jsonify({"error": "title and creator_id are required"}), 400
 
             if not list_date:
-                list_date = None  # let DB handle default / NULL
+                list_date = None
 
-            # Use existing DB helper for basic insert
-            success = self.db.create_item(title, description, category, list_date, creator_id)
+            # Price is included
+            success = self.db.create_item(title, price, description, category, list_date, creator_id)
             if not success:
                 return jsonify({"error": "Failed to create item"}), 500
 
-            # Retrieve the new item's ID (assumes titles are unique enough for now)
-            item_id = self.db.get_item_id_by_title(title)
-            if not item_id:
-                return jsonify({"error": "Item created but could not retrieve item_id"}), 500
+            # Retrieve the new item's ID using a custom query with RETURNING
+            # Note: Using RETURNING is more robust than ordering by DESC
+            sql = "INSERT INTO Item (title, price, description , category, list_date, creator_id) VALUES (%s, %s, %s, %s, %s, %s) RETURNING item_id, title, price, description, category, list_date, creator_id;"
+            params = (title, price, description, category, list_date, creator_id)
+            row = self.db.execute_query(sql, params=params, fetch_one=True, commit=True)
+            
+            if not row:
+                 return jsonify({"error": "Item created but could not retrieve details"}), 500
 
-            # If sku / quantity are provided, update them directly
-            if sku is not None or quantity is not None:
-                sql = "UPDATE Item SET "
-                sets = []
-                params = []
-                if sku is not None:
-                    sets.append("sku = %s")
-                    params.append(sku)
-                if quantity is not None:
-                    sets.append("quantity = %s")
-                    params.append(quantity)
-                sql += ", ".join(sets) + " WHERE item_id = %s;"
-                params.append(item_id)
-                self.db.execute_query(sql, params=tuple(params), commit=True)
-
-            # Reload full row including sku/quantity for response & eBay
-            sql = """
-                SELECT item_id, title, description, category, list_date, creator_id, sku, quantity
-                FROM Item
-                WHERE item_id = %s;
-            """
-            row = self.db.execute_query(sql, params=(item_id,), fetch_one=True)
             item = self._item_row_to_dict(row)
 
-            # Prepare dict used for eBay sync
-            item_dict = {
-                "item_id": item["item_id"],
-                "sku": item.get("sku") or sku,
-                "title": item["title"],
-                "description": item.get("description") or "",
-                "category": item.get("category") or "",
-                "quantity": item.get("quantity") if item.get("quantity") is not None else (quantity or 0),
-                "price": str(price) if price is not None else "0.00",
-            }
+            item["ebay_sync"] = "disabled (no credentials/logic in route)"
+            item["etsy_sync"] = "disabled (no credentials/logic in route)"
 
-            # Push to eBay
-            if self.ebay and item_dict["sku"]:
-                try:
-                    ebay_result = self.ebay.sync_item_create_or_update(item_dict)
-                    item["ebay_sync"] = "ok"
-                    item["ebay_response"] = ebay_result
-                except EbayAPIError as e:
-                    item["ebay_sync"] = "failed"
-                    item["ebay_error"] = str(e)
-
-            # Same for Etsy
-            if self.etsy:
-                try:
-                    etsy_result = self.etsy.sync_item_create_or_update(item_dict)
-                    item["etsy_sync"] = "ok"
-                    item["etsy_response"] = etsy_result
-                    # TODO: item["etsy_listing_id"] = etsy_result.get("listing_id")
-                except EtsyAPIError as e:
-                    item["etsy_sync"] = "failed"
-                    item["etsy_error"] = str(e)
             return jsonify(item), 201
 
         @api.route("/items/<int:item_id>", methods=["PUT", "PATCH"])
         def update_item(item_id):
             data = request.get_json(force=True) or {}
 
-            description = data.get("description")
-            category = data.get("category")
-            sku = data.get("sku")
-            quantity = data.get("quantity")
-            price = data.get("price")
+            # Fetch existing data to ensure all fields are available for the comprehensive update method
+            row = self.db.get_item_by_id(item_id)
+            if not row:
+                return jsonify({"error": f"Item {item_id} not found"}), 404
 
-            # Build dynamic update so we can handle sku/quantity too
-            fields = []
-            params = []
+            # Use new data if provided, otherwise use existing data
+            title = data.get("title", row["title"])
+            price = data.get("price", APIRoutes._safe_money_to_float(row["price"]))
+            description = data.get("description", row["description"])
+            category = data.get("category", row["category"])
+            list_date = data.get("list_date", row["list_date"].isoformat() if row["list_date"] else None)
 
-            if description is not None:
-                fields.append("description = %s")
-                params.append(description)
-            if category is not None:
-                fields.append("category = %s")
-                params.append(category)
-            if sku is not None:
-                fields.append("sku = %s")
-                params.append(sku)
-            if quantity is not None:
-                fields.append("quantity = %s")
-                params.append(quantity)
-
-            if not fields:
-                return jsonify({"error": "No updatable fields provided"}), 400
-
-            sql = "UPDATE Item SET " + ", ".join(fields) + " WHERE item_id = %s;"
-            params.append(item_id)
-            self.db.execute_query(sql, params=tuple(params), commit=True)
+            success = self.db.update_item(item_id, title, price, description, category, list_date)
+            if not success:
+                return jsonify({"error": f"Failed to update item {item_id}"}), 500
 
             # Reload full row
-            sql = """
-                SELECT item_id, title, description, category, list_date, creator_id, sku, quantity
-                FROM Item
-                WHERE item_id = %s;
-            """
-            row = self.db.execute_query(sql, params=(item_id,), fetch_one=True)
-            if not row:
-                return jsonify({"error": f"Item {item_id} not found after update"}), 404
-
+            row = self.db.get_item_by_id(item_id)
             item = self._item_row_to_dict(row)
 
-            # Prepare dict for eBay sync
-            item_dict = {
-                "item_id": item["item_id"],
-                "sku": item.get("sku") or sku,
-                "title": item["title"],
-                "description": item.get("description") or "",
-                "category": item.get("category") or "",
-                "quantity": item.get("quantity") if item.get("quantity") is not None else (quantity or 0),
-                "price": str(price) if price is not None else "0.00",
-            }
-
-            # Push to eBay (Same routine as create_item)
-            if self.ebay and item_dict["sku"]:
-                try:
-                    ebay_result = self.ebay.sync_item_create_or_update(item_dict)
-                    item["ebay_sync"] = "ok"
-                    item["ebay_response"] = ebay_result
-                except EbayAPIError as e:
-                    item["ebay_sync"] = "failed"
-                    item["ebay_error"] = str(e)
-
-            # Same for Etsy
-            if self.etsy:
-                try:
-                    etsy_result = self.etsy.sync_item_create_or_update(item_dict)
-                    item["etsy_sync"] = "ok"
-                    item["etsy_response"] = etsy_result
-                    # TODO: item["etsy_listing_id"] = etsy_result.get("listing_id")
-                except EtsyAPIError as e:
-                    item["etsy_sync"] = "failed"
-                    item["etsy_error"] = str(e)
+            item["ebay_sync"] = "disabled (no credentials/logic in route)"
+            item["etsy_sync"] = "disabled (no credentials/logic in route)"
 
             return jsonify(item), 200
 
         @api.route("/items/<int:item_id>", methods=["DELETE"])
         def delete_item(item_id):
-            # Load row first so we know the SKU for eBay
-            sql = """
-                SELECT item_id, title, description, category, list_date, creator_id, sku, quantity
-                FROM Item
-                WHERE item_id = %s;
-            """
-            row = self.db.execute_query(sql, params=(item_id,), fetch_one=True)
+            # Load row first (optional, kept for original logic's structure)
+            row = self.db.get_item_by_id(item_id)
             if not row:
                 return jsonify({"error": f"Item {item_id} not found"}), 404
 
-            item = self._item_row_to_dict(row)
-
-            # Try to delete from eBay first (but don't hard-fail if it breaks)
-            if self.ebay and item.get("sku"):
-                try:
-                    self.ebay.sync_item_delete({"sku": item["sku"]})
-                    ebay_status = "ok"
-                except EbayAPIError as e:
-                    ebay_status = f"failed: {e}"
-            else:
-                ebay_status = "not_configured"
-
-            # Same routine for Etsy
-            if self.etsy:
-                try:
-                    self.etsy.sync_item_delete(item)
-                    etsy_status = "ok"
-                except EtsyAPIError as e:
-                    etsy_status = f"failed: {e}"
-            else:
-                etsy_status = "not_configured"
+            ebay_status = "not_configured_in_route"
+            etsy_status = "not_configured_in_route"
 
             success = self.db.delete_item(item_id)
             if not success:
@@ -430,11 +271,14 @@ class APIRoutes:
             if not name:
                 return jsonify({"error": "name is required"}), 400
 
-            success = self.db.create_organization(name)
-            if not success:
-                return jsonify({"error": "Failed to create organization"}), 500
+            # Use custom query with RETURNING to get the new ID efficiently
+            sql = "INSERT INTO Organization (name) VALUES (%s) RETURNING organization_id;"
+            result = self.db.execute_query(sql, params=(name,), fetch_one=True, commit=True)
+            org_id = result["organization_id"] if result else None
 
-            org_id = self.db.get_organization_id_by_name(name)
+            if not org_id:
+                return jsonify({"error": "Failed to create organization"}), 500
+            
             return jsonify({"organization_id": org_id, "name": name}), 201
 
         @api.route("/organizations/<int:organization_id>", methods=["PUT", "PATCH"])
@@ -444,7 +288,7 @@ class APIRoutes:
             if not name:
                 return jsonify({"error": "name is required"}), 400
 
-            success = self.db.update_organization_name(organization_id, name)
+            success = self.db.update_organization(organization_id, name)
             if not success:
                 return jsonify({"error": f"Failed to update organization {organization_id}"}), 500
 
@@ -458,77 +302,35 @@ class APIRoutes:
             return jsonify({"message": f"Organization {organization_id} deleted successfully"}), 200
 
         # ----------------------------
-        # Resellers
-        # ----------------------------
-
-        @api.route("/resellers", methods=["GET"])
-        def get_resellers():
-            rows = self.db.get_all_resellers()
-            resellers = [self._reseller_row_to_dict(r) for r in rows] if rows else []
-            return jsonify(resellers), 200
-
-        @api.route("/resellers/<int:reseller_id>", methods=["GET"])
-        def get_reseller(reseller_id):
-            row = self.db.get_reseller_by_id(reseller_id)
-            if not row:
-                return jsonify({"error": f"Reseller {reseller_id} not found"}), 404
-            reseller = self._reseller_row_to_dict(row)
-            return jsonify(reseller), 200
-
-        @api.route("/resellers", methods=["POST"])
-        def create_reseller():
-            data = request.get_json(force=True) or {}
-            reseller_name = data.get("reseller_name")
-            if not reseller_name:
-                return jsonify({"error": "reseller_name is required"}), 400
-
-            success = self.db.create_reseller(reseller_name)
-            if not success:
-                return jsonify({"error": "Failed to create reseller"}), 500
-
-            reseller_id = self.db.get_reseller_id_by_name(reseller_name)
-            return jsonify({"reseller_id": reseller_id, "reseller_name": reseller_name}), 201
-
-        @api.route("/resellers/<int:reseller_id>", methods=["PUT", "PATCH"])
-        def update_reseller(reseller_id):
-            data = request.get_json(force=True) or {}
-            reseller_name = data.get("reseller_name")
-            if not reseller_name:
-                return jsonify({"error": "reseller_name is required"}), 400
-
-            success = self.db.update_reseller_name(reseller_id, reseller_name)
-            if not success:
-                return jsonify({"error": f"Failed to update reseller {reseller_id}"}), 500
-
-            return jsonify({"reseller_id": reseller_id, "reseller_name": reseller_name}), 200
-
-        @api.route("/resellers/<int:reseller_id>", methods=["DELETE"])
-        def delete_reseller(reseller_id):
-            success = self.db.delete_reseller(reseller_id)
-            if not success:
-                return jsonify({"error": f"Failed to delete reseller {reseller_id}"}), 500
-            return jsonify({"message": f"Reseller {reseller_id} deleted successfully"}), 200
-
-        # ----------------------------
         # Transactions
         # ----------------------------
 
         @api.route("/transactions/<int:transaction_id>", methods=["GET"])
         def get_transaction(transaction_id):
-            row = self.db.get_transaction_by_id(transaction_id)
+            row = self.db.get_app_transaction_by_id(transaction_id)
             if not row:
                 return jsonify({"error": f"Transaction {transaction_id} not found"}), 404
+            
             tx = self._transaction_row_to_dict(row)
-            # Also pull items for this transaction
-            items = self.db.get_items_for_transaction(transaction_id) or []
+            
+            # Pull items for this transaction
+            sql = """
+                SELECT ati.transaction_item_id, i.item_id, i.title, i.description, i.category 
+                FROM AppTransaction_Item ati
+                JOIN Item i ON ati.item_id = i.item_id
+                WHERE ati.transaction_id = %s;
+            """
+            items_rows = self.db.execute_query(sql, params=(transaction_id,), fetch_all=True) or []
+
             tx["items"] = [
                 {
-                    "transaction_item_id": r[0],
-                    "title": r[1],
-                    "description": r[2],
-                    "category": r[3],
+                    "transaction_item_id": r["transaction_item_id"],
+                    "item_id": r["item_id"],
+                    "title": r["title"],
+                    "description": r["description"],
+                    "category": r["category"],
                 }
-                for r in items
+                for r in items_rows
             ]
             return jsonify(tx), 200
 
@@ -538,60 +340,70 @@ class APIRoutes:
             sale_date = data.get("sale_date")
             total = data.get("total", 0.0)
             tax = data.get("tax", 0.0)
-            reseller_comission = data.get("reseller_comission", 0.0)
-            reseller_id = data.get("reseller_id")
+            
+            # MAPPING FOR TEST COMPATIBILITY: Test script sends reseller_*, DB needs seller_*
+            seller_comission = data.get("reseller_comission", 0.0)
+            seller_id = data.get("reseller_id")
 
-            if not sale_date or reseller_id is None:
+            if not sale_date or seller_id is None:
                 return jsonify({"error": "sale_date and reseller_id are required"}), 400
 
-            success = self.db.create_transaction(sale_date, total, tax, reseller_comission, reseller_id)
-            if not success:
+            # Use a custom query with RETURNING to get the new ID efficiently
+            sql = "INSERT INTO AppTransaction (sale_date, total, tax, seller_comission, seller_id) VALUES (%s, %s, %s, %s, %s) RETURNING transaction_id, sale_date, total, tax, seller_comission, seller_id;"
+            params = (sale_date, total, tax, seller_comission, seller_id)
+            result = self.db.execute_query(sql, params=params, fetch_one=True, commit=True)
+            
+            if not result:
                 return jsonify({"error": "Failed to create transaction"}), 500
-
-            # sale_date might not be unique, so we grab the latest ID for that date
-            ids = self.db.get_transaction_ids_by_date(sale_date) or []
-            transaction_id = ids[-1] if ids else None
-
-            return jsonify(
-                {
-                    "transaction_id": transaction_id,
-                    "sale_date": sale_date,
-                    "total": total,
-                    "tax": tax,
-                    "reseller_comission": reseller_comission,
-                    "reseller_id": reseller_id,
-                }
-            ), 201
+            
+            # Use the helper to map the output columns back to the test script's expected keys
+            return jsonify(self._transaction_row_to_dict(result)), 201
 
         @api.route("/transactions/<int:transaction_id>", methods=["PUT", "PATCH"])
         def update_transaction(transaction_id):
             data = request.get_json(force=True) or {}
-            total = data.get("total")
-            tax = data.get("tax")
-            reseller_comission = data.get("reseller_comission")
+            
+            # Fetch existing transaction to fill in missing required fields 
+            row = self.db.get_app_transaction_by_id(transaction_id)
+            if not row:
+                return jsonify({"error": f"Transaction {transaction_id} not found"}), 404
+            
+            # MAPPING FOR TEST COMPATIBILITY: Test script sends reseller_*, DB needs seller_*
+            # Use new data if provided, otherwise use existing data (converting from DB's seller_* to internal variables)
+            sale_date = data.get("sale_date", row["sale_date"].isoformat() if row["sale_date"] else None)
+            total = data.get("total", APIRoutes._safe_money_to_float(row["total"]))
+            tax = data.get("tax", APIRoutes._safe_money_to_float(row["tax"]))
+            seller_comission = data.get("reseller_comission", APIRoutes._safe_money_to_float(row["seller_comission"]))
+            seller_id = data.get("reseller_id", row["seller_id"])
 
-            if total is None or tax is None or reseller_comission is None:
-                return jsonify({"error": "total, tax, and reseller_comission are required"}), 400
-
-            success = self.db.update_transaction_totals(transaction_id, total, tax, reseller_comission)
+            # Call the DB method with the correct (new) schema names
+            success = self.db.update_app_transaction(transaction_id, sale_date, total, tax, seller_comission, seller_id)
             if not success:
                 return jsonify({"error": f"Failed to update transaction {transaction_id}"}), 500
 
-            return jsonify(
-                {
-                    "transaction_id": transaction_id,
-                    "total": total,
-                    "tax": tax,
-                    "reseller_comission": reseller_comission,
-                }
-            ), 200
+            # Reload to get the latest data and use helper for output mapping
+            updated_row = self.db.get_app_transaction_by_id(transaction_id)
+            return jsonify(self._transaction_row_to_dict(updated_row)), 200
 
         @api.route("/transactions/<int:transaction_id>", methods=["DELETE"])
         def delete_transaction(transaction_id):
-            success = self.db.delete_transaction(transaction_id)
+            success = self.db.delete_app_transaction(transaction_id)
             if not success:
                 return jsonify({"error": f"Failed to delete transaction {transaction_id}"}), 500
             return jsonify({"message": f"Transaction {transaction_id} deleted successfully"}), 200
+
+        # NEW ROUTE: Get all transactions associated with an AppUser (Transaction seller)
+        @api.route("/users/<int:user_id>/transactions", methods=["GET"])
+        def get_user_transactions(user_id):
+            """Retrieves all AppTransaction records sold by the specified AppUser."""
+            # Method name updated
+            rows = self.db.get_app_transactions_by_seller_id(user_id)
+            if not rows:
+                return jsonify([]), 200
+            
+            # Use the helper to map output columns to the test script's expected keys
+            transactions = [self._transaction_row_to_dict(row) for row in rows]
+            return jsonify(transactions), 200
 
         # ----------------------------
         # Link Items to Transactions
@@ -606,12 +418,15 @@ class APIRoutes:
             if item_id is None or transaction_id is None:
                 return jsonify({"error": "Both item_id and transaction_id are required"}), 400
 
-            success = self.db.link_item_to_transaction(item_id, transaction_id)
+            success = self.db.create_app_transaction_item(item_id, transaction_id)
             if not success:
                 return jsonify({"error": "Failed to link item and transaction"}), 500
 
-            # Retrieve the new link id (optional)
-            link_id = self.db.get_transaction_item_id_by_link(item_id, transaction_id)
+            # Retrieve the new link id using a custom query since the new interface doesn't use RETURNING
+            sql = "SELECT transaction_item_id FROM AppTransaction_Item WHERE item_id = %s AND transaction_id = %s ORDER BY transaction_item_id DESC LIMIT 1;"
+            result = self.db.execute_query(sql, params=(item_id, transaction_id), fetch_one=True)
+            link_id = result["transaction_item_id"] if result else None
+            
             return jsonify(
                 {
                     "message": f"Item {item_id} linked to transaction {transaction_id}",
@@ -621,7 +436,7 @@ class APIRoutes:
 
         @api.route("/transactions/unlink/<int:transaction_item_id>", methods=["DELETE"])
         def unlink_transaction_item(transaction_item_id):
-            success = self.db.unlink_item_from_transaction(transaction_item_id)
+            success = self.db.delete_app_transaction_item(transaction_item_id)
             if not success:
                 return jsonify({"error": f"Failed to remove transaction item link {transaction_item_id}"}), 500
             return jsonify({"message": f"Transaction item link {transaction_item_id} removed"}), 200
