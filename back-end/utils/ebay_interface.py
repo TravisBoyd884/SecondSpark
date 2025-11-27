@@ -4,6 +4,7 @@ import os
 import time
 import base64
 import logging
+from dotenv import load_dotenv
 from typing import Any, Dict, Optional
 
 import requests
@@ -25,9 +26,12 @@ class EbayInterface:
     """
 
     def __init__(self, marketplace_id: str = "EBAY_US"):
+        # load environment variables from '.env' file
+        load_dotenv(dotenv_path=".env")
         self.client_id = os.getenv("EBAY_CLIENT_ID")
         self.client_secret = os.getenv("EBAY_CLIENT_SECRET")
-        self.env = os.getenv("EBAY_ENV", "sandbox").lower()
+        # Get environment type for the Ebay api (sandbox or production)
+        self.env = os.getenv("EBAY_ENV").lower()
         self.marketplace_id = marketplace_id
 
         if not self.client_id or not self.client_secret:

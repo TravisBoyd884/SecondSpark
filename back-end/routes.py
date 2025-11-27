@@ -16,8 +16,14 @@ class APIRoutes:
         # calls return dictionaries (or a list of dictionaries).
         self.db = DBInterface()
 
-        self.ebay = None
-        self.etsy = None
+        try:
+            self.ebay = EbayInterface()
+        except EbayAPIError as e:
+            print(f"[Err] Unable to initialize Ebay Interface \n Err: {e}")
+        try:
+            self.etsy = EtsyInterface()
+        except EtsyAPIError as e:
+            print(f"[Err] Unable to initialize Etsy Interface \n Err: {e}")
 
         # WARNING: MARKETPLACE CREDENTIALS REFACTORING
         # The logic below for fetching global credentials has been removed 
