@@ -207,58 +207,49 @@ def test_item_crud_and_fetch():
 # 4. TRANSACTION CRUD & Custom Fetch TESTS
 # ======================================================================
 
-def test_item_crud_and_fetch():
+def test_transaction_crud_and_fetch():
     print("\n\n#####################################################")
-    print("## 📦 ITEM CRUD & CUSTOM FETCH TESTS")
+    print("## 💸 TRANSACTION CRUD & CUSTOM FETCH TESTS")
     print("#####################################################")
-
-    # POST /items
-    item_title = f"NewTestItem-{random.randint(1000, 9999)}"
+    
+    # POST /transactions (IMPORTANT: Use 'reseller_id' and 'reseller_comission' for test compatibility)
     post_data = {
-        "title": item_title,
-        "price": 99.99,
-        "description": "A new gadget for testing.",
-        "category": "Gadgets",
-        "list_date": datetime.now().strftime("%Y-%m-%d"),
-        "creator_id": TEST_DATA["EXISTING_USER_ID"], 
+        "sale_date": datetime.now().strftime("%Y-%m-%d"),
+        "total": 550.00,
+        "tax": 35.00,
+        "reseller_comission": 25.00, # Maps to seller_comission in DB
+        "reseller_id": TEST_DATA["EXISTING_USER_ID"] # Maps to seller_id in DB
     }
-    res = run_test("POST Create Item", 'POST', f"{BASE_URL}/items", 
+    res = run_test("POST Create Transaction", 'POST', f"{BASE_URL}/transactions", 
              data=post_data, expected_status=201)
-
-    if res and res.get('item_id'):
-        TEST_DATA["new_item_id"] = res['item_id']
-        print(f"[INFO] New Item ID: {TEST_DATA['new_item_id']}")
+    
+    if res and res.get('transaction_id'):
+        TEST_DATA["new_transaction_id"] = res['transaction_id']
+        print(f"[INFO] New Transaction ID: {TEST_DATA['new_transaction_id']}")
     else:
-        print("[FATAL] Failed to create item. Cannot proceed with dependent tests.")
+        print("[FATAL] Failed to create transaction. Cannot proceed with dependent tests.")
         return
 
-    # GET /items/<id>
-    run_test(f"GET Item {TEST_DATA['new_item_id']} Details", 'GET', 
-             f"{BASE_URL}/items/{TEST_DATA['new_item_id']}")
+    # GET /transactions/<id>
+    run_test(f"GET Transaction {TEST_DATA['new_transaction_id']} Details (No items yet)", 'GET', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}")
 
-    # GET /items
-    run_test("GET All Items", 'GET', f"{BASE_URL}/items")
+    # GET /users/<id>/transactions (New Custom Route)
+    res_txs = run_test(f"GET Transactions for User {TEST_DATA['EXISTING_USER_ID']}", 'GET', 
+             f"{BASE_URL}/users/{TEST_DATA['EXISTING_USER_ID']}/transactions", expected_status=200)
+    if res_txs and isinstance(res_txs, list):
+         print(f"[INFO] Fetched {len(res_txs)} transactions for user {TEST_DATA['EXISTING_USER_ID']}")
 
-    # 👇 NEW ROUTE TEST: GET /users/<id>/items
-    res_items = run_test(f"GET Items for User {TEST_DATA['EXISTING_USER_ID']}", 'GET', 
-             f"{BASE_URL}/users/{TEST_DATA['EXISTING_USER_ID']}/items", expected_status=200)
-    if res_items and isinstance(res_items, list):
-         print(f"[INFO] Fetched {len(res_items)} items for user {TEST_DATA['EXISTING_USER_ID']}")
-    # 👆 END NEW ROUTE TEST
-
-    # PUT /items/<id>
-    updated_title = f"{item_title}-Updated"
+    # PUT /transactions/<id>
     put_data = {
-        "title": updated_title,
-        "price": 109.99,
-        "description": "Updated description.",
-        "category": "Updated Gadgets",
-        "list_date": "2025-01-01",
-        "creator_id": TEST_DATA["EXISTING_USER_ID"] # Required to maintain data integrity
+        "sale_date": "2025-02-02",
+        "total": 600.00,
+        "tax": 40.00,
+        "reseller_comission": 30.00, # Maps to seller_comission in DB
+        "reseller_id": TEST_DATA["EXISTING_USER_ID"] # Maps to seller_id in DB
     }
-    run_test(f"PUT Update Item {TEST_DATA['new_item_id']}", 'PUT', 
-             f"{BASE_URL}/items/{TEST_DATA['new_item_id']}", data=put_data, expected_status=200)
-
+    run_test(f"PUT Update Transaction {TEST_DATA['new_transaction_id']}", 'PUT', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}", data=put_data, expected_status=200)
 
 # ======================================================================
 # 5. TRANSACTION ITEM LINK TESTS
@@ -288,6 +279,12 @@ def test_transaction_item_link():
         print("[FATAL] Failed to create link. Cannot proceed with unlink test.")
         return
 
+    # GET /transactions/<id>/items (New Custom Route)
+    res_items = run_test(f"GET Items for Transaction {TEST_DATA['new_transaction_id']}", 'GET', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}/items", expected_status=200)
+    if res_items and isinstance(res_items, list) and len(res_items) > 0:
+         print(f"[PASS] Successfully fetched {len(res_items)} items for the new transaction.")
+         
     # GET /transactions/<id> (Verify the link is included in the transaction details)
     run_test(f"GET Transaction {TEST_DATA['new_transaction_id']} Details (Verify Link)", 'GET', 
              f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}")
