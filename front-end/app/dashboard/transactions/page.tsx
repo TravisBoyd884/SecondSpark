@@ -1,7 +1,6 @@
 import Pagination from "@/app/ui/transactions/pagination";
 import Search from "@/app/ui/search";
 import Table from "@/app/ui/transactions/table";
-// import { CreateInvoice } from "@/app/ui/transactions/buttons";
 // import { InvoicesTableSkeleton } from "@/app/ui/skeletons";
 import { Suspense } from "react";
 import Link from "next/link";
@@ -20,9 +19,9 @@ export default async function Page() {
       {/*  <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
         <Table query={query} currentPage={currentPage} />
       </Suspense> */}
-      <Table query={""} currentPage={1} />
+      {/* <Table query={""} currentPage={1} /> */}
       <div className="mt-5 flex w-full justify-center">
-        {/* <Pagination totalPages={totalPages} /> */}
+        <Pagination totalPages={2} />
       </div>
     </div>
   );
