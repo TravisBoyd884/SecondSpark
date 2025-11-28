@@ -342,6 +342,19 @@ class DBInterface:
         """
         return self.execute_query(sql, params=(item_id,), fetch_all=True)
 
+    def get_items_for_app_transaction(self, transaction_id: int):
+        """
+        Retrieves all Item records associated with the specified transaction_id 
+        by joining Item and AppTransaction_Item.
+        """
+        sql = """
+            SELECT i.*
+            FROM Item i
+            JOIN AppTransaction_Item ati ON i.item_id = ati.item_id
+            WHERE ati.transaction_id = %s;
+        """
+        return self.execute_query(sql, params=(transaction_id,), fetch_all=True)
+
     # =======================================================================================
     # Ebay CRUD
     # =======================================================================================

@@ -424,6 +424,15 @@ class APIRoutes:
             transactions = [self._transaction_row_to_dict(row) for row in rows]
             return jsonify(transactions), 200
 
+        @api.route("/transactions/<int:transaction_id>/items", methods=["GET"])
+        def get_transaction_items(transaction_id):
+            """Retrieves all Item records associated with the specified transaction_id via AppTransaction_Item."""
+            rows = self.db.get_items_for_app_transaction(transaction_id)
+            if not rows:
+                return jsonify([]), 200
+            
+            return jsonify(rows), 200
+
         @api.route("/transactions/link", methods=["POST"])
         def link_transaction_item():
             data = request.get_json(force=True) or {}
