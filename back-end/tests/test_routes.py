@@ -184,6 +184,11 @@ def test_item_crud_and_fetch():
     if res_items and isinstance(res_items, list):
          print(f"[INFO] Fetched {len(res_items)} items for user {TEST_DATA['EXISTING_USER_ID']}")
 
+    res_txs = run_test(f"GET Transactions for Item {TEST_DATA['EXISTING_ITEM_ID']}", 'GET', 
+             f"{BASE_URL}/items/{TEST_DATA['EXISTING_ITEM_ID']}/transactions", expected_status=200)
+    if res_txs and isinstance(res_txs, list):
+         print(f"[INFO] Fetched {len(res_txs)} transactions associated with item {TEST_DATA['EXISTING_ITEM_ID']}")
+
     # PUT /items/<id>
     updated_title = f"{item_title}-Updated"
     put_data = {
@@ -246,7 +251,6 @@ def test_transaction_crud_and_fetch():
     run_test(f"PUT Update Transaction {TEST_DATA['new_transaction_id']}", 'PUT', 
              f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}", data=put_data, expected_status=200)
 
-
 # ======================================================================
 # 5. TRANSACTION ITEM LINK TESTS
 # ======================================================================
@@ -275,6 +279,12 @@ def test_transaction_item_link():
         print("[FATAL] Failed to create link. Cannot proceed with unlink test.")
         return
 
+    # GET /transactions/<id>/items (New Custom Route)
+    res_items = run_test(f"GET Items for Transaction {TEST_DATA['new_transaction_id']}", 'GET', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}/items", expected_status=200)
+    if res_items and isinstance(res_items, list) and len(res_items) > 0:
+         print(f"[PASS] Successfully fetched {len(res_items)} items for the new transaction.")
+         
     # GET /transactions/<id> (Verify the link is included in the transaction details)
     run_test(f"GET Transaction {TEST_DATA['new_transaction_id']} Details (Verify Link)", 'GET', 
              f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}")

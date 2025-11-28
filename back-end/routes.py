@@ -141,8 +141,7 @@ class APIRoutes:
 
             items = [self._item_row_to_dict(row) for row in rows]
             return jsonify(items), 200
-        
-        # NEW ROUTE: Get all items associated with an AppUser (Item creator)
+
         @api.route("/users/<int:user_id>/items", methods=["GET"])
         def get_user_items(user_id):
             """Retrieves all Item records created by the specified AppUser."""
@@ -152,7 +151,6 @@ class APIRoutes:
             
             items = [self._item_row_to_dict(row) for row in rows]
             return jsonify(items), 200
-
 
         @api.route("/items/<int:item_id>", methods=["GET"])
         def get_item(item_id):
@@ -398,22 +396,42 @@ class APIRoutes:
                 return jsonify({"error": f"Failed to delete transaction {transaction_id}"}), 500
             return jsonify({"message": f"Transaction {transaction_id} deleted successfully"}), 200
 
-        # NEW ROUTE: Get all transactions associated with an AppUser (Transaction seller)
+        # Get all transaction rows for a given user.
         @api.route("/users/<int:user_id>/transactions", methods=["GET"])
         def get_user_transactions(user_id):
             """Retrieves all AppTransaction records sold by the specified AppUser."""
-            # Method name updated
+            # Calls the corresponding function in db.interface
             rows = self.db.get_app_transactions_by_seller_id(user_id)
             if not rows:
                 return jsonify([]), 200
             
-            # Use the helper to map output columns to the test script's expected keys
+            # Use the helper to map output columns to the test script's expected keys 
+            # and safely convert the MONEY fields to float.
             transactions = [self._transaction_row_to_dict(row) for row in rows]
             return jsonify(transactions), 200
 
         # ----------------------------
         # Link Items to Transactions
         # ----------------------------
+
+        @api.route("/items/<int:item_id>/transactions", methods=["GET"])
+        def get_item_transactions(item_id):
+            """Retrieves all AppTransaction records associated with the specified item_id."""
+            rows = self.db.get_app_transactions_by_item_id(item_id)
+            if not rows:
+                return jsonify([]), 200
+            
+            transactions = [self._transaction_row_to_dict(row) for row in rows]
+            return jsonify(transactions), 200
+
+        @api.route("/transactions/<int:transaction_id>/items", methods=["GET"])
+        def get_transaction_items(transaction_id):
+            """Retrieves all Item records associated with the specified transaction_id via AppTransaction_Item."""
+            rows = self.db.get_items_for_app_transaction(transaction_id)
+            if not rows:
+                return jsonify([]), 200
+            
+            return jsonify(rows), 200
 
         @api.route("/transactions/link", methods=["POST"])
         def link_transaction_item():
