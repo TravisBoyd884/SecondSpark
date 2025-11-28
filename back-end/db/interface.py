@@ -328,6 +328,20 @@ class DBInterface:
         sql = "DELETE FROM AppTransaction_Item WHERE transaction_item_id = %s;"
         return self._execute_dml(sql, (transaction_item_id,))
 
+    def get_app_transactions_by_item_id(self, item_id: int):
+        """Retrieves all AppTransaction records associated with the specified item_id via AppTransaction_Item."""
+        sql = """
+            SELECT
+                t.transaction_id, t.sale_date, t.total, t.tax, t.seller_comission, t.seller_id
+            FROM
+                AppTransaction t
+            JOIN
+                AppTransaction_Item ati ON t.transaction_id = ati.transaction_id
+            WHERE
+                ati.item_id = %s;
+        """
+        return self.execute_query(sql, params=(item_id,), fetch_all=True)
+
     # =======================================================================================
     # Ebay CRUD
     # =======================================================================================

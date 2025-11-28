@@ -184,6 +184,11 @@ def test_item_crud_and_fetch():
     if res_items and isinstance(res_items, list):
          print(f"[INFO] Fetched {len(res_items)} items for user {TEST_DATA['EXISTING_USER_ID']}")
 
+    res_txs = run_test(f"GET Transactions for Item {TEST_DATA['EXISTING_ITEM_ID']}", 'GET', 
+             f"{BASE_URL}/items/{TEST_DATA['EXISTING_ITEM_ID']}/transactions", expected_status=200)
+    if res_txs and isinstance(res_txs, list):
+         print(f"[INFO] Fetched {len(res_txs)} transactions associated with item {TEST_DATA['EXISTING_ITEM_ID']}")
+
     # PUT /items/<id>
     updated_title = f"{item_title}-Updated"
     put_data = {
