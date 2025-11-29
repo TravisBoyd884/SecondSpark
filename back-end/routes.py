@@ -69,6 +69,25 @@ class APIRoutes:
         }
 
     @staticmethod
+    def _user_row_to_dict(row: dict):
+        """
+        Convert an AppUser row (dictionary) into a JSON-serializable dict,
+        excluding the password.
+        """
+        if row is None:
+            return None
+
+        return {
+            "user_id": row.get("user_id"),
+            "username": row.get("username"),
+            "email": row.get("email"),
+            "organization_id": row.get("organization_id"),
+            "organization_role": row.get("organization_role"),
+            "ebay_account_id": row.get("ebay_account_id"),
+            "etsy_account_id": row.get("etsy_account_id"),
+        }
+
+    @staticmethod
     def _org_row_to_dict(row: dict):
         if row is None:
             return None
@@ -128,6 +147,57 @@ class APIRoutes:
                 "organization_role": user_row["organization_role"],
             }
             return jsonify({"message": "Login successful", "user": user}), 200
+
+        @api.route("/register", methods=["POST"])
+        def register_user():
+            """
+            Creates a new user and assigns them to an organization with a default 'member' role.
+            This route is intended for public-facing user sign-up.
+            """
+            data = request.get_json(force=True) or {}
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email")
+            organization_id = data.get("organization_id")
+            organization_role = "member"  # Default role for self-registration
+
+            if not all([username, password, email, organization_id]):
+                return (
+                    jsonify(
+                        {
+                            "error": "Username, password, email, and organization_id are required for registration"
+                        }
+                    ),
+                    400,
+                )
+            
+            # Check if organization exists
+            if not self.db.get_organization_by_id(organization_id):
+                return jsonify({"error": f"Organization with ID {organization_id} not found"}), 404
+
+            # Perform the creation
+            success = self.db.create_user(
+                username, password, email, organization_id, organization_role
+            )
+            
+            if not success:
+                return jsonify({"error": "Failed to create user. Username or email may already be in use."}), 500
+
+            user_id = self.db.get_user_id_by_username(username)
+            return (
+                jsonify({"message": "User registered successfully", "user_id": user_id}),
+                201,
+            )
+
+        @api.route("/users/<int:user_id>", methods=["GET"])
+        def get_user_by_id(user_id):
+            """Retrieves an AppUser record by their ID."""
+            row = self.db.get_app_user_by_id(user_id)
+            if not row:
+                return jsonify({"error": f"User {user_id} not found"}), 404
+            
+            user = self._user_row_to_dict(row)
+            return jsonify(user), 200
 
         # ----------------------------
         # Items
@@ -464,3 +534,60 @@ class APIRoutes:
             if not success:
                 return jsonify({"error": f"Failed to remove transaction item link {transaction_item_id}"}), 500
             return jsonify({"message": f"Transaction item link {transaction_item_id} removed"}), 200
+
+        #################
+        # Ebay Routes
+        #################
+
+        @api.route("/users/<int:user_id>/ebay_account", methods=["GET"])
+        def get_ebay_account_for_user(user_id):
+            """
+            Retrieves the associated Ebay account record for a given user.
+            Requires two DB calls: User -> Ebay Account ID -> Ebay Record.
+            """
+            # 1. Get the user record to find the ebay_account_id
+            user_row = self.db.get_app_user_by_id(user_id)
+            if not user_row:
+                return jsonify({"error": f"User {user_id} not found"}), 404
+
+            ebay_account_id = user_row.get("ebay_account_id")
+
+            if not ebay_account_id:
+                return jsonify({"error": f"User {user_id} does not have an eBay account linked"}), 404
+
+            # 2. Get the Ebay account details
+            ebay_row = self.db.get_ebay_account_by_id(ebay_account_id)
+            if not ebay_row:
+                # Should not happen if FKs are correct, but good for robustness
+                return jsonify({"error": f"eBay account with ID {ebay_account_id} not found"}), 404
+
+            # NOTE: We return the row directly as it is a dictionary and does not contain 
+            # highly sensitive, non-API-related fields like 'password'.
+            return jsonify(ebay_row), 200
+
+        @api.route("/users/<int:user_id>/ebay_items", methods=["GET"])
+        def get_ebay_items_for_user(user_id):
+            """
+            Retrieves all EbayItem records directly from the database that are 
+            linked to the user's Ebay account via the AppUser and Ebay tables.
+            """
+            # 1. Fetch items using the new DB interface function
+            rows = self.db.get_ebay_items_by_user_id(user_id)
+            
+            if rows is None:
+                # Handles potential SQL errors, e.g., if the 'EbayItem' table doesn't exist
+                return jsonify({"error": f"Failed to fetch eBay items for user {user_id} due to a database issue."}), 500
+
+            if not rows:
+                # Check if the user exists/is linked to an account to provide a more accurate error message
+                user_row = self.db.get_app_user_by_id(user_id)
+                if not user_row:
+                    return jsonify({"error": f"User {user_id} not found"}), 404
+                if not user_row.get("ebay_account_id"):
+                     return jsonify({"error": f"User {user_id} does not have an eBay account linked"}), 404
+                
+                # User and account exist but no items found in the database
+                return jsonify([]), 200
+
+            # 2. Return the list of dictionaries (from RealDictCursor)
+            return jsonify(rows), 200
