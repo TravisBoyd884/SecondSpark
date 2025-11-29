@@ -534,3 +534,26 @@ class DBInterface:
         sql = "SELECT user_id FROM AppUser WHERE username = %s;"
         result = self.execute_query(sql, params=(username,), fetch_one=True)
         return result['user_id'] if result else None
+
+    # Return ebay items related to a given user id
+    def get_ebay_items_by_user_id(self, user_id: int):
+        """
+        Retrieves all EbayItem records linked to the Ebay account of the specified AppUser.
+        
+        NOTE: This assumes the existence of an 'EbayItem' table which is linked 
+        via 'ebay_account_id' to the 'Ebay' table, which is in turn linked to 'AppUser'.
+        You must create the 'EbayItem' table in your database schema for this to work.
+        """
+        sql = """
+            SELECT 
+                ei.*
+            FROM 
+                AppUser au
+            JOIN 
+                Ebay e ON au.ebay_account_id = e.ebay_account_id
+            JOIN
+                EbayItem ei ON e.ebay_account_id = ei.ebay_account_id
+            WHERE 
+                au.user_id = %s;
+        """
+        return self.execute_query(sql, params=(user_id,), fetch_all=True)
