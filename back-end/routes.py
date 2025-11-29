@@ -129,6 +129,47 @@ class APIRoutes:
             }
             return jsonify({"message": "Login successful", "user": user}), 200
 
+        @api.route("/register", methods=["POST"])
+        def register_user():
+            """
+            Creates a new user and assigns them to an organization with a default 'member' role.
+            This route is intended for public-facing user sign-up.
+            """
+            data = request.get_json(force=True) or {}
+            username = data.get("username")
+            password = data.get("password")
+            email = data.get("email")
+            organization_id = data.get("organization_id")
+            organization_role = "member"  # Default role for self-registration
+
+            if not all([username, password, email, organization_id]):
+                return (
+                    jsonify(
+                        {
+                            "error": "Username, password, email, and organization_id are required for registration"
+                        }
+                    ),
+                    400,
+                )
+            
+            # Check if organization exists
+            if not self.db.get_organization_by_id(organization_id):
+                return jsonify({"error": f"Organization with ID {organization_id} not found"}), 404
+
+            # Perform the creation
+            success = self.db.create_user(
+                username, password, email, organization_id, organization_role
+            )
+            
+            if not success:
+                return jsonify({"error": "Failed to create user. Username or email may already be in use."}), 500
+
+            user_id = self.db.get_user_id_by_username(username)
+            return (
+                jsonify({"message": "User registered successfully", "user_id": user_id}),
+                201,
+            )
+
         # ----------------------------
         # Items
         # ----------------------------
