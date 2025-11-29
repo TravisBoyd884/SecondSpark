@@ -8,6 +8,7 @@ import {
   DollarSign,
   Clock,
 } from "lucide-react";
+import { login } from "@/app/lib/data";
 
 export default function Page() {
   return (
