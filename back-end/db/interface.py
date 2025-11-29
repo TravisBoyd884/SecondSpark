@@ -1,16 +1,11 @@
 import psycopg2
-from psycopg2 import OperationalError, Error
 from psycopg2.pool import SimpleConnectionPool
 from psycopg2.extras import RealDictCursor
-
-from mutagen.mp3 import MP3
-from mutagen.id3 import ID3NoHeaderError, ID3
-
 import os
 import time
 import socket
 
-# Get envirnment variables from linux container
+# --- Environment Configuration (Keep as is) ---
 DB_NAME = os.getenv("DB_NAME")
 DB_HOST = os.getenv("DB_HOST")
 DB_USER = os.getenv("DB_USER")
@@ -24,6 +19,7 @@ def wait_for_db(timeout=int):
 
     while True:
         try:
+            # Note: DB_PORT from env is a string, but socket.create_connection handles it.
             with socket.create_connection((DB_HOST, DB_PORT), timeout=2):
                 print(f"[INFO] Database is available at port {DB_PORT}")
                 return
@@ -35,8 +31,9 @@ def wait_for_db(timeout=int):
                 exit()
 
 
-class conn_pool(object):
-    def __init__(self, min_conn, max_conn): # Take max and min db connections as parameter
+class ConnectionPool:
+    def __init__(self, min_conn, max_conn):
+        # Renamed class to follow standard Python capitalization convention
         self.min_conn = min_conn
         self.max_conn = max_conn
         self.db_pool = None
@@ -54,21 +51,21 @@ class conn_pool(object):
             print("[INFO] Successfully connected to database!")
             print(f"[INFO] psycopg2 connection pool initialized with max={self.max_conn} and min={self.min_conn}")
         except Exception as e:
-            print(f"[ERROR] Unable to initialize connection pool! [conn_pool::__init__]\n Error: {e}")
+            print(f"[ERROR] Unable to initialize connection pool! [ConnectionPool::__init__]\n Error: {e}")
             exit()
 
-    def get_conn(self): # Borrow a connection from the pool
+    def get_conn(self):
         try:
             return self.db_pool.getconn()
         except Exception as e:
-            print(f"[ERROR] Unable to borrow connection [conn_pool::get_conn]\n Error: {e}")
-            exit()
+            print(f"[ERROR] Unable to borrow connection [ConnectionPool::get_conn]\n Error: {e}")
+            raise  # Re-raise for the caller to handle
     
     def return_conn(self, conn):
         try:
             self.db_pool.putconn(conn)
         except Exception as e:
-            print(f"[ERROR] Unable to return conn to pool! [conn_pool::return_conn]\n Error: {e}")
+            print(f"[ERROR] Unable to return conn to pool! [ConnectionPool::return_conn]\n Error: {e}")
             exit()
     
     def close_pool(self):
@@ -76,15 +73,17 @@ class conn_pool(object):
             self.db_pool.closeall()
             print("[INFO] Pool has been closed!")
         except Exception as e:
-            print(f"[ERROR] Unable to close conn pool! [conn_pool::close_pool]\n Error: {e}")
+            print(f"[ERROR] Unable to close conn pool! [ConnectionPool::close_pool]\n Error: {e}")
 
 
-# Method to load database schema into Postgres container -------------------------------------------------------
+# Method to load database schema into Postgres container
 def load_schema(schema_file_path) -> bool:
     if not os.path.exists(schema_file_path):
         print("[ERROR] Schema file does not exist! [db_interface::load_schema]")
         return False
 
+    conn = None
+    curr = None
     try:
         with open(schema_file_path, "r") as file:
             sql_script = file.read()
@@ -97,7 +96,7 @@ def load_schema(schema_file_path) -> bool:
             host=DB_HOST,
             port=DB_PORT
         )
-        conn.autocommit = True  # Schema setup typically needs autocommit
+        conn.autocommit = True
         curr = conn.cursor()
         
         curr.execute(sql_script)
@@ -105,78 +104,73 @@ def load_schema(schema_file_path) -> bool:
         return True
     except psycopg2.Error as e:
         print(f"[ERROR] Schema file from '{schema_file_path}' could not be loaded/read! [db_interface::load_schema] \nError: {e}")
-        if not conn.autocommit:
-            conn.rollback()
+        # Note: autocommit=True means no need for conn.rollback() on error here.
         return False
-    finally: # Return the conn after use
+    finally:
         if curr:
             curr.close()
         if conn:
             conn.close()
 
 
-class db_interface(object):
+class DBInterface:
     def __init__(self):
-        # Composition of conn_pool object for conn management
-        self.pool = conn_pool(1, 15)
+        # Composition of ConnectionPool object for conn management
+        self.pool = ConnectionPool(1, 15)
 
-        # Show current directory in container
-        print(f"[INFO] Current directory '{os.getcwd()}' [db_interface::__init__]")
-
-
-    # General method for PostgreSQL queries ------------------------------------------------------------------------
-    def execute_query(self, sql, params=None ,fetch_one=False, fetch_all=False, commit=False):
+    # General method for PostgreSQL queries
+    def execute_query(self, sql, params=None, fetch_one=False, fetch_all=False, commit=False):
+        conn = None
+        curr = None
+        result = None
         try:
-            result = None
             conn = self.pool.get_conn()
-            curr = conn.cursor()
+            # Use RealDictCursor to return results as dictionaries (better for Flask/JSON)
+            curr = conn.cursor(cursor_factory=RealDictCursor) 
             
             curr.execute(sql, params)
             
-            if fetch_all == True and fetch_one == False and commit == False:
+            if fetch_all:
                 result = curr.fetchall()
-            elif fetch_one == True and fetch_all == False and commit == False:
+            elif fetch_one:
                 result = curr.fetchone()
-            # If a commit is requested for a DML opteration
-            elif commit == True and fetch_all == False and fetch_one == False: 
+
+            if commit:
                 conn.commit()
-            elif commit == False and fetch_one == False and fetch_all == False:
-                pass # For DDL operation or SELECT where fetch is not needed.
-            else:  
-                print(f"[ERROR] Improper parameter sent to execute_query [db_interface::execute_query]\n Error: {e}")
 
         except psycopg2.Error as e:
-            print(f"[ERROR] Unable fullfill transaction! [db_interface::execute_query]\n Error: {e}")
-            conn.rollback()
+            print(f"[ERROR] Unable to fulfill transaction! [DBInterface::execute_query]\n Error: {e}")
+            if conn and not conn.autocommit:
+                conn.rollback()
+            raise # Re-raise the exception to the caller
         except Exception as e:
-            print(f"[ERROR] Unable fullfill transaction! [db_interface::execute_query]\n Error: {e}")
-            conn.rollback()
+            print(f"[ERROR] General error in transaction! [DBInterface::execute_query]\n Error: {e}")
+            if conn and not conn.autocommit:
+                conn.rollback()
+            raise # Re-raise the exception to the caller
         finally:
             if curr:
                 curr.close()
             if conn:
-                conn.commit()
                 self.pool.return_conn(conn)
 
         return result
 
-    # Wrapper for the execute_query method ---------------------------------------------------------------------
-
+    # Wrapper for the execute_query method
     def _execute_dml(self, sql, params=None) -> bool:
         """Helper method for DML (INSERT, UPDATE, DELETE) operations that require commit."""
         try:
             self.execute_query(sql, params=params, commit=True)
             return True
-        except Exception as e:
-            # The general error handling is already in execute_query, but this allows for a DML specific catch if needed.
-            print(f"[ERROR] DML operation failed. SQL: {sql[:50]}... \n Error: {e}")
-            return False
-    
+        except Exception:
+            return False # execute_query already prints the error
 
-    # Organization CRUD ----------------------------------------------------------------------------------------
+    # =======================================================================================
+    # Organization CRUD
+    # =======================================================================================
 
     def create_organization(self, name: str) -> bool:
-        """Inserts a new organization into the Organization table."""
+        """Inserts a new organization."""
         sql = "INSERT INTO Organization (name) VALUES (%s);"
         return self._execute_dml(sql, (name,))
 
@@ -185,7 +179,12 @@ class db_interface(object):
         sql = "SELECT organization_id, name FROM Organization WHERE organization_id = %s;"
         return self.execute_query(sql, params=(organization_id,), fetch_one=True)
 
-    def update_organization_name(self, organization_id: int, new_name: str) -> bool:
+    def get_all_organizations(self):
+        """Retrieves all organization records."""
+        sql = "SELECT organization_id, name FROM Organization;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_organization(self, organization_id: int, new_name: str) -> bool:
         """Updates the name of an existing organization."""
         sql = "UPDATE Organization SET name = %s WHERE organization_id = %s;"
         return self._execute_dml(sql, (new_name, organization_id))
@@ -195,232 +194,366 @@ class db_interface(object):
         sql = "DELETE FROM Organization WHERE organization_id = %s;"
         return self._execute_dml(sql, (organization_id,))
 
-    # AppUser CRUD ---------------------------------------------------------------------------------------------
+    # =======================================================================================
+    # AppUser CRUD
+    # =======================================================================================
 
-    def create_user(self, username: str, password: str, email: str, organization_id: int, organization_role: str) -> bool:
+    def create_app_user(self, username: str, password: str, email: str, organization_id: int = None, organization_role: str = None, ebay_account_id: int = None, etsy_account_id: int = None) -> bool:
         """Inserts a new user into the AppUser table."""
-        sql = "INSERT INTO AppUser (username, password, email, organization_id, organization_role) VALUES (%s, %s, %s, %s, %s);"
-        return self._execute_dml(sql, (username, password, email, organization_id, organization_role))
+        sql = "INSERT INTO AppUser (username, password, email, organization_id, organization_role, ebay_account_id, etsy_account_id) VALUES (%s, %s, %s, %s, %s, %s, %s);"
+        params = (username, password, email, organization_id, organization_role, ebay_account_id, etsy_account_id)
+        return self._execute_dml(sql, params)
 
-    def get_user_by_username(self, username: str):
-        """Retrieves a user record by their username."""
-        sql = "SELECT user_id, username, password, email, organization_id, organization_role FROM AppUser WHERE username = %s;"
-        return self.execute_query(sql, params=(username,), fetch_one=True)
-
-    def get_user_by_id(self, user_id: int):
-        """Retrieves a user record by their ID (including password hash)."""
-        # Note: Selects all columns, including password hash (index 2), which is filtered in the Flask endpoint.
-        sql = "SELECT user_id, username, password, email, organization_id, organization_role FROM AppUser WHERE user_id = %s;"
+    def get_app_user_by_id(self, user_id: int):
+        """Retrieves an AppUser record by their ID."""
+        sql = "SELECT * FROM AppUser WHERE user_id = %s;"
         return self.execute_query(sql, params=(user_id,), fetch_one=True)
     
-    def update_user_role(self, user_id: int, new_role: str, new_org_id: int = None) -> bool:
-        """Updates a user's organization role and optionally their organization."""
-        if new_org_id is None:
-            sql = "UPDATE AppUser SET organization_role = %s WHERE user_id = %s;"
-            return self._execute_dml(sql, (new_role, user_id))
-        else:
-            sql = "UPDATE AppUser SET organization_role = %s, organization_id = %s WHERE user_id = %s;"
-            return self._execute_dml(sql, (new_role, new_org_id, user_id))
+    def get_app_user_by_username(self, username: str):
+        """Retrieves an AppUser record by their username."""
+        sql = "SELECT * FROM AppUser WHERE username = %s;"
+        return self.execute_query(sql, params=(username,), fetch_one=True)
 
-    def delete_user(self, user_id: int) -> bool:
-        """Deletes a user record by its ID."""
-        # Note: Will fail if the user is a creator for any existing Item due to FK constraint.
+    def get_all_app_users(self):
+        """Retrieves all AppUser records (Be cautious with security)."""
+        sql = "SELECT user_id, username, email, organization_id, organization_role FROM AppUser;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_app_user(self, user_id: int, password: str, email: str, organization_id: int, organization_role: str, ebay_account_id: int = None, etsy_account_id: int = None) -> bool:
+        """Updates all mutable details of an existing AppUser."""
+        sql = "UPDATE AppUser SET password = %s, email = %s, organization_id = %s, organization_role = %s, ebay_account_id = %s, etsy_account_id = %s WHERE user_id = %s;"
+        params = (password, email, organization_id, organization_role, ebay_account_id, etsy_account_id, user_id)
+        return self._execute_dml(sql, params)
+
+    def delete_app_user(self, user_id: int) -> bool:
+        """Deletes an AppUser record by its ID."""
         sql = "DELETE FROM AppUser WHERE user_id = %s;"
         return self._execute_dml(sql, (user_id,))
 
+    # =======================================================================================
+    # Item CRUD
+    # =======================================================================================
+
+    def create_item(self, title: str, price: float, description: str, category: str, list_date: str, creator_id: int) -> bool:
+        """Inserts a new item into the Item table."""
+        # Note: PostgreSQL MONEY type should accept float from Python.
+        sql = "INSERT INTO Item (title, price, description , category, list_date, creator_id) VALUES (%s, %s, %s, %s, %s, %s);"
+        params = (title, price, description, category, list_date, creator_id)
+        return self._execute_dml(sql, params)
+
+    def get_item_by_id(self, item_id: int):
+        """Retrieves an item record by its ID."""
+        sql = "SELECT * FROM Item WHERE item_id = %s;"
+        return self.execute_query(sql, params=(item_id,), fetch_one=True)
+    
+    def get_all_items(self):
+        """Retrieves all records from the Item table."""
+        sql = "SELECT * FROM Item;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def get_all_items_by_appuser_id(self, user_id: int):
+        """Retrieves all Item records created by the specified AppUser (user_id is mapped to creator_id)."""
+        sql = "SELECT item_id, title, price, description, category, list_date, creator_id FROM Item WHERE creator_id = %s;"
+        return self.execute_query(sql, params=(user_id,), fetch_all=True)
+
+    def update_item(self, item_id: int, title: str, price: float, description: str, category: str, list_date: str) -> bool:
+        """Updates all mutable details of an existing item."""
+        sql = "UPDATE Item SET title = %s, price = %s, description = %s, category = %s, list_date = %s WHERE item_id = %s;"
+        params = (title, price, description, category, list_date, item_id)
+        return self._execute_dml(sql, params)
+
+    def delete_item(self, item_id: int) -> bool:
+        """Deletes an item record by its ID."""
+        sql = "DELETE FROM Item WHERE item_id = %s;"
+        return self._execute_dml(sql, (item_id,))
+
+    # =======================================================================================
+    # AppTransaction CRUD
+    # =======================================================================================
+
+    def create_app_transaction(self, sale_date: str, total: float, tax: float, seller_comission: float, seller_id: int) -> bool:
+        """Inserts a new transaction into the AppTransaction table."""
+        sql = "INSERT INTO AppTransaction (sale_date, total, tax, seller_comission, seller_id) VALUES (%s, %s, %s, %s, %s);"
+        params = (sale_date, total, tax, seller_comission, seller_id)
+        return self._execute_dml(sql, params)
+
+    def get_app_transaction_by_id(self, transaction_id: int):
+        """Retrieves a transaction record by its ID."""
+        sql = "SELECT * FROM AppTransaction WHERE transaction_id = %s;"
+        return self.execute_query(sql, params=(transaction_id,), fetch_one=True)
+    
+    def get_all_app_transactions(self):
+        """Retrieves all AppTransaction records."""
+        sql = "SELECT * FROM AppTransaction;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_app_transaction(self, transaction_id: int, sale_date: str, total: float, tax: float, seller_comission: float, seller_id: int) -> bool:
+        """Updates all details of an existing transaction."""
+        sql = "UPDATE AppTransaction SET sale_date = %s, total = %s, tax = %s, seller_comission = %s, seller_id = %s WHERE transaction_id = %s;"
+        params = (sale_date, total, tax, seller_comission, seller_id, transaction_id)
+        return self._execute_dml(sql, params)
+
+    def delete_app_transaction(self, transaction_id: int) -> bool:
+        """Deletes a transaction record by its ID."""
+        sql = "DELETE FROM AppTransaction WHERE transaction_id = %s;"
+        return self._execute_dml(sql, (transaction_id,))
+
+    # =======================================================================================
+    # AppTransaction_Item CRUD (Link Table)
+    # =======================================================================================
+
+    def create_app_transaction_item(self, item_id: int, transaction_id: int) -> bool:
+        """Links an item to a transaction."""
+        sql = "INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES (%s, %s);"
+        return self._execute_dml(sql, (item_id, transaction_id))
+
+    def get_app_transaction_item_by_id(self, transaction_item_id: int):
+        """Retrieves a link record by its ID."""
+        sql = "SELECT * FROM AppTransaction_Item WHERE transaction_item_id = %s;"
+        return self.execute_query(sql, params=(transaction_item_id,), fetch_one=True)
+    
+    def get_all_app_transaction_items(self):
+        """Retrieves all AppTransaction_Item records."""
+        sql = "SELECT * FROM AppTransaction_Item;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_app_transaction_item(self, transaction_item_id: int, new_item_id: int, new_transaction_id: int) -> bool:
+        """Updates the item and transaction linked in a transaction_item record."""
+        sql = "UPDATE AppTransaction_Item SET item_id = %s, transaction_id = %s WHERE transaction_item_id = %s;"
+        params = (new_item_id, new_transaction_id, transaction_item_id)
+        return self._execute_dml(sql, params)
+
+    def delete_app_transaction_item(self, transaction_item_id: int) -> bool:
+        """Deletes a link record."""
+        sql = "DELETE FROM AppTransaction_Item WHERE transaction_item_id = %s;"
+        return self._execute_dml(sql, (transaction_item_id,))
+
+    def get_app_transactions_by_item_id(self, item_id: int):
+        """Retrieves all AppTransaction records associated with the specified item_id via AppTransaction_Item."""
+        sql = """
+            SELECT
+                t.transaction_id, t.sale_date, t.total, t.tax, t.seller_comission, t.seller_id
+            FROM
+                AppTransaction t
+            JOIN
+                AppTransaction_Item ati ON t.transaction_id = ati.transaction_id
+            WHERE
+                ati.item_id = %s;
+        """
+        return self.execute_query(sql, params=(item_id,), fetch_all=True)
+
+    def get_items_for_app_transaction(self, transaction_id: int):
+        """
+        Retrieves all Item records associated with the specified transaction_id 
+        by joining Item and AppTransaction_Item.
+        """
+        sql = """
+            SELECT i.*
+            FROM Item i
+            JOIN AppTransaction_Item ati ON i.item_id = ati.item_id
+            WHERE ati.transaction_id = %s;
+        """
+        return self.execute_query(sql, params=(transaction_id,), fetch_all=True)
+
+    # =======================================================================================
+    # Ebay CRUD
+    # =======================================================================================
+
+    def create_ebay_account(self, user_id: int, client_id: str = None, client_secret: str = None, environment: str = 'sandbox') -> int or None:
+        """Inserts a new Ebay account and returns its ID."""
+        sql = "INSERT INTO Ebay (user_id, client_id, client_secret, environment) VALUES (%s, %s, %s, %s) RETURNING account_id;"
+        params = (user_id, client_id, client_secret, environment)
+        result = self.execute_query(sql, params, fetch_one=True, commit=True)
+        return result['account_id'] if result else None
+
+    def get_ebay_account_by_id(self, account_id: int):
+        """Retrieves an Ebay account record by its ID."""
+        sql = "SELECT * FROM Ebay WHERE account_id = %s;"
+        return self.execute_query(sql, params=(account_id,), fetch_one=True)
+    
+    def get_all_ebay_accounts(self):
+        """Retrieves all Ebay account records."""
+        sql = "SELECT * FROM Ebay;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_ebay_account(self, account_id: int, client_id: str, client_secret: str, environment: str) -> bool:
+        """Updates client details of an existing Ebay account."""
+        sql = "UPDATE Ebay SET client_id = %s, client_secret = %s, environment = %s WHERE account_id = %s;"
+        params = (client_id, client_secret, environment, account_id)
+        return self._execute_dml(sql, params)
+
+    def delete_ebay_account(self, account_id: int) -> bool:
+        """Deletes an Ebay account record by its ID."""
+        sql = "DELETE FROM Ebay WHERE account_id = %s;"
+        return self._execute_dml(sql, (account_id,))
+
+    # =======================================================================================
+    # Etsy CRUD
+    # =======================================================================================
+
+    def create_etsy_account(self, user_id: int, client_id: str = None, client_secret: str = None, environment: str = None) -> int or None:
+        """Inserts a new Etsy account and returns its ID."""
+        sql = "INSERT INTO Etsy (user_id, client_id, client_secret, environment) VALUES (%s, %s, %s, %s) RETURNING account_id;"
+        params = (user_id, client_id, client_secret, environment)
+        result = self.execute_query(sql, params, fetch_one=True, commit=True)
+        return result['account_id'] if result else None
+
+    def get_etsy_account_by_id(self, account_id: int):
+        """Retrieves an Etsy account record by its ID."""
+        sql = "SELECT * FROM Etsy WHERE account_id = %s;"
+        return self.execute_query(sql, params=(account_id,), fetch_one=True)
+    
+    def get_all_etsy_accounts(self):
+        """Retrieves all Etsy account records."""
+        sql = "SELECT * FROM Etsy;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_etsy_account(self, account_id: int, client_id: str, client_secret: str, environment: str) -> bool:
+        """Updates client details of an existing Etsy account."""
+        sql = "UPDATE Etsy SET client_id = %s, client_secret = %s, environment = %s WHERE account_id = %s;"
+        params = (client_id, client_secret, environment, account_id)
+        return self._execute_dml(sql, params)
+
+    def delete_etsy_account(self, account_id: int) -> bool:
+        """Deletes an Etsy account record by its ID."""
+        sql = "DELETE FROM Etsy WHERE account_id = %s;"
+        return self._execute_dml(sql, (account_id,))
+    
+    # =======================================================================================
+    # EbayItem CRUD
+    # =======================================================================================
+
+    def create_ebay_item(self, sku: str, item_id: int, quantity: int, ebay_item_id: str, ebay_offer_id: str, ebay_listing_id: str, ebay_status: str, last_synced_at: str, source_of_truth: str, ebay_account_id: int) -> bool:
+        """Inserts a new EbayItem."""
+        sql = "INSERT INTO EbayItem (sku, item_id, quantity, ebay_item_id, ebay_offer_id, ebay_listing_id, ebay_status, last_synced_at, source_of_truth, ebay_account_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s);"
+        params = (sku, item_id, quantity, ebay_item_id, ebay_offer_id, ebay_listing_id, ebay_status, last_synced_at, source_of_truth, ebay_account_id)
+        return self._execute_dml(sql, params)
+
+    def get_ebay_item_by_sku(self, sku: str):
+        """Retrieves an EbayItem record by its SKU (Primary Key)."""
+        sql = "SELECT * FROM EbayItem WHERE sku = %s;"
+        return self.execute_query(sql, params=(sku,), fetch_one=True)
+    
+    def get_all_ebay_items(self):
+        """Retrieves all EbayItem records."""
+        sql = "SELECT * FROM EbayItem;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_ebay_item(self, sku: str, quantity: int, ebay_status: str, last_synced_at: str, source_of_truth: str) -> bool:
+        """Updates mutable details of an existing EbayItem."""
+        sql = "UPDATE EbayItem SET quantity = %s, ebay_status = %s, last_synced_at = %s, source_of_truth = %s WHERE sku = %s;"
+        params = (quantity, ebay_status, last_synced_at, source_of_truth, sku)
+        return self._execute_dml(sql, params)
+
+    def delete_ebay_item(self, sku: str) -> bool:
+        """Deletes an EbayItem record by its SKU."""
+        sql = "DELETE FROM EbayItem WHERE sku = %s;"
+        return self._execute_dml(sql, (sku,))
+
+    # =======================================================================================
+    # EtsyItem CRUD
+    # =======================================================================================
+
+    def create_etsy_item(self, sku: str, item_id: int, quantity: int, etsy_account_id: int) -> bool:
+        """Inserts a new EtsyItem."""
+        sql = "INSERT INTO EtsyItem (sku, item_id, quantity, etsy_account_id) VALUES (%s, %s, %s, %s);"
+        params = (sku, item_id, quantity, etsy_account_id)
+        return self._execute_dml(sql, params)
+
+    def get_etsy_item_by_sku(self, sku: str):
+        """Retrieves an EtsyItem record by its SKU (Primary Key)."""
+        sql = "SELECT * FROM EtsyItem WHERE sku = %s;"
+        return self.execute_query(sql, params=(sku,), fetch_one=True)
+    
+    def get_all_etsy_items(self):
+        """Retrieves all EtsyItem records."""
+        sql = "SELECT * FROM EtsyItem;"
+        return self.execute_query(sql, fetch_all=True)
+
+    def update_etsy_item(self, sku: str, quantity: int) -> bool:
+        """Updates mutable details of an existing EtsyItem."""
+        sql = "UPDATE EtsyItem SET quantity = %s WHERE sku = %s;"
+        params = (quantity, sku)
+        return self._execute_dml(sql, (quantity, sku))
+
+    def delete_etsy_item(self, sku: str) -> bool:
+        """Deletes an EtsyItem record by its SKU."""
+        sql = "DELETE FROM EtsyItem WHERE sku = %s;"
+        return self._execute_dml(sql, (sku,))
+
+    # =======================================================================================
+    # Custom Retrieval Methods
+    # =======================================================================================
+
+    def get_all_items_by_appuser_id(self, user_id: int):
+        """
+        Retrieves all Item records created by the specified AppUser.
+        This directly relates to the fk_item_creator constraint.
+        """
+        sql = """
+            SELECT 
+                item_id, title, price, description, category, list_date, creator_id
+            FROM 
+                Item
+            WHERE 
+                creator_id = %s
+            ORDER BY
+                list_date DESC;
+        """
+        return self.execute_query(sql, params=(user_id,), fetch_all=True)
+
+    def get_app_transactions_by_seller_id(self, seller_id: int):
+        """
+        Retrieves all AppTransaction records sold by the specified AppUser.
+        """
+        sql = """
+            SELECT 
+                transaction_id, sale_date, total, tax, seller_comission
+            FROM 
+                AppTransaction
+            WHERE 
+                seller_id = %s
+            ORDER BY
+                sale_date DESC;
+        """
+        return self.execute_query(sql, params=(seller_id,), fetch_all=True)
+
+    # --- Utility Methods (Keep as is) ---
     def validate_user_credentials(self, username: str, password: str) -> int or None:
         """
         [INSECURE] Validates raw username and password against the database. 
         Returns: user_id (int) if valid, None otherwise.
         """
+        # Note: This is fine for a raw password example, but should use hashing in a production app.
         sql = "SELECT user_id FROM AppUser WHERE username = %s AND password = %s;"
-        
-        # Execute query fetches the single row (user_id,)
         result = self.execute_query(sql, params=(username, password), fetch_one=True)
-        
-        # Returns the user_id (the first element of the result tuple) or None
-        return result[0] if result else None
-
-    # Item CRUD ------------------------------------------------------------------------------------------------
-
-    def create_item(self, title: str, description: str, category: str, list_date: str, creator_id: int) -> bool:
-        """Inserts a new item into the Item table."""
-        sql = "INSERT INTO Item (title, description, category, list_date, creator_id) VALUES (%s, %s, %s, %s, %s);"
-        return self._execute_dml(sql, (title, description, category, list_date, creator_id))
-
-    def get_item_by_id(self, item_id: int):
-        """Retrieves an item record by its ID."""
-        sql = "SELECT item_id, title, description, category, list_date, creator_id FROM Item WHERE item_id = %s;"
-        return self.execute_query(sql, params=(item_id,), fetch_one=True)
-
-    def update_item_details(self, item_id: int, description: str, category: str) -> bool:
-        """Updates the description and category of an existing item."""
-        sql = "UPDATE Item SET description = %s, category = %s WHERE item_id = %s;"
-        return self._execute_dml(sql, (description, category, item_id))
-
-    def delete_item(self, item_id: int) -> bool:
-        """Deletes an item record by its ID."""
-        # Note: Will fail if the item is linked to any AppTransaction_Item due to FK constraint.
-        sql = "DELETE FROM Item WHERE item_id = %s;"
-        return self._execute_dml(sql, (item_id,))
-
-    # Reseller CRUD --------------------------------------------------------------------------------------------
-
-    def create_reseller(self, reseller_name: str) -> bool:
-        """Inserts a new reseller into the Reseller table."""
-        sql = "INSERT INTO Reseller (reseller_name) VALUES (%s);"
-        return self._execute_dml(sql, (reseller_name,))
-
-    def get_reseller_by_id(self, reseller_id: int):
-        """Retrieves a reseller record by its ID."""
-        sql = "SELECT reseller_id, reseller_name FROM Reseller WHERE reseller_id = %s;"
-        return self.execute_query(sql, params=(reseller_id,), fetch_one=True)
-
-    def update_reseller_name(self, reseller_id: int, new_name: str) -> bool:
-        """Updates the name of an existing reseller."""
-        sql = "UPDATE Reseller SET reseller_name = %s WHERE reseller_id = %s;"
-        return self._execute_dml(sql, (new_name, reseller_id))
-
-    def delete_reseller(self, reseller_id: int) -> bool:
-        """Deletes a reseller record by its ID."""
-        # Note: Will fail if the reseller is linked to any AppTransaction due to FK constraint.
-        sql = "DELETE FROM Reseller WHERE reseller_id = %s;"
-        return self._execute_dml(sql, (reseller_id,))
-
-    # AppTransaction CRUD --------------------------------------------------------------------------------------
-
-    def create_transaction(self, sale_date: str, total: float, tax: float, reseller_comission: float, reseller_id: int) -> bool:
-        """Inserts a new transaction into the AppTransaction table."""
-        sql = "INSERT INTO AppTransaction (sale_date, total, tax, reseller_comission, reseller_id) VALUES (%s, %s, %s, %s, %s);"
-        return self._execute_dml(sql, (sale_date, total, tax, reseller_comission, reseller_id))
-
-    def get_transaction_by_id(self, transaction_id: int):
-        """Retrieves a transaction record by its ID."""
-        sql = "SELECT transaction_id, sale_date, total, tax, reseller_comission, reseller_id FROM AppTransaction WHERE transaction_id = %s;"
-        return self.execute_query(sql, params=(transaction_id,), fetch_one=True)
-
-    def update_transaction_totals(self, transaction_id: int, total: float, tax: float, reseller_comission: float) -> bool:
-        """Updates the financial totals of an existing transaction."""
-        sql = "UPDATE AppTransaction SET total = %s, tax = %s, reseller_comission = %s WHERE transaction_id = %s;"
-        return self._execute_dml(sql, (total, tax, reseller_comission, transaction_id))
-
-    def delete_transaction(self, transaction_id: int) -> bool:
-        """Deletes a transaction record by its ID."""
-        # Note: Will fail if the transaction is linked to any AppTransaction_Item due to FK constraint.
-        sql = "DELETE FROM AppTransaction WHERE transaction_id = %s;"
-        return self._execute_dml(sql, (transaction_id,))
-
-    def get_transactions_by_creator_id(self, creator_id: int):
-        """
-        Retrieves all transactions that include items created by the specified user (creator_id).
-        
-        Performs a three-way join: AppTransaction <- AppTransaction_Item <- Item <- AppUser.
-        """
-        sql = """
-            SELECT DISTINCT
-                t.transaction_id,
-                t.sale_date,
-                t.total,
-                t.tax,
-                t.reseller_comission,
-                r.reseller_name AS reseller
-            FROM
-                AppTransaction t
-            JOIN
-                AppTransaction_Item ati ON t.transaction_id = ati.transaction_id
-            JOIN
-                Item i ON ati.item_id = i.item_id
-            JOIN
-                Reseller r ON t.reseller_id = r.reseller_id
-            WHERE
-                i.creator_id = %s
-            ORDER BY
-                t.sale_date DESC;
-        """
-        return self.execute_query(sql, params=(creator_id,), fetch_all=True)
-
-    # AppTransaction_Item CRUD (Link Table) --------------------------------------------------------------------
-
-    def link_item_to_transaction(self, item_id: int, transaction_id: int) -> bool:
-        """Links an item to a transaction."""
-        sql = "INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES (%s, %s);"
-        return self._execute_dml(sql, (item_id, transaction_id))
-
-    def get_items_for_transaction(self, transaction_id: int):
-        """Retrieves all linked items (with item details) for a given transaction ID."""
-        sql = """
-            SELECT ati.transaction_item_id, i.title, i.description, i.category 
-            FROM AppTransaction_Item ati
-            JOIN Item i ON ati.item_id = i.item_id
-            WHERE ati.transaction_id = %s;
-        """
-        return self.execute_query(sql, params=(transaction_id,), fetch_all=True)
-
-    def update_transaction_item_link(self, transaction_item_id: int, new_item_id: int) -> bool:
-        """Updates the item linked in a transaction_item record."""
-        sql = "UPDATE AppTransaction_Item SET item_id = %s WHERE transaction_item_id = %s;"
-        return self._execute_dml(sql, (new_item_id, transaction_item_id))
-
-    def unlink_item_from_transaction(self, transaction_item_id: int) -> bool:
-        """Deletes a link between an item and a transaction."""
-        sql = "DELETE FROM AppTransaction_Item WHERE transaction_item_id = %s;"
-        return self._execute_dml(sql, (transaction_item_id,))
-
-    # Primary key lookup methods -------------------------------------------------------------
-
-    def get_organization_id_by_name(self, name: str) -> int or None:
-        """Retrieves the organization_id from the Organization table using its name."""
-        sql = "SELECT organization_id FROM Organization WHERE name = %s;"
-        result = self.execute_query(sql, params=(name,), fetch_one=True)
-        return result[0] if result else None
+        return result['user_id'] if result else None
 
     def get_user_id_by_username(self, username: str) -> int or None:
         """Retrieves the user_id from the AppUser table using their username."""
         sql = "SELECT user_id FROM AppUser WHERE username = %s;"
         result = self.execute_query(sql, params=(username,), fetch_one=True)
-        return result[0] if result else None
+        return result['user_id'] if result else None
 
-    def get_item_id_by_title(self, title: str) -> int or None:
-        """Retrieves the item_id from the Item table using its title."""
-        sql = "SELECT item_id FROM Item WHERE title = %s;"
-        result = self.execute_query(sql, params=(title,), fetch_one=True)
-        return result[0] if result else None
-    
-    def get_reseller_id_by_name(self, reseller_name: str) -> int or None:
-        """Retrieves the reseller_id from the Reseller table using its name."""
-        sql = "SELECT reseller_id FROM Reseller WHERE reseller_name = %s;"
-        result = self.execute_query(sql, params=(reseller_name,), fetch_one=True)
-        return result[0] if result else None
-
-    def get_transaction_ids_by_date(self, sale_date: str) -> list or None:
-        """Retrieves all transaction_ids from AppTransaction using the sale_date."""
-        # Returns a list of IDs since dates may not be unique
-        sql = "SELECT transaction_id FROM AppTransaction WHERE sale_date = %s;"
-        results = self.execute_query(sql, params=(sale_date,), fetch_all=True)
-        return [r[0] for r in results] if results else None
-
-    def get_transaction_item_id_by_link(self, item_id: int, transaction_id: int) -> int or None:
-        """Retrieves the transaction_item_id using the item_id and transaction_id."""
-        sql = "SELECT transaction_item_id FROM AppTransaction_Item WHERE item_id = %s AND transaction_id = %s;"
-        result = self.execute_query(sql, params=(item_id, transaction_id), fetch_one=True)
-        return result[0] if result else None
-
-    # General Read Methods -------------------------------------------------------------------------------------
-
-    def get_all_items(self):
-        """Retrieves all records from the Item table."""
-        sql = "SELECT item_id, title, description, category, list_date, creator_id FROM Item;"
-        return self.execute_query(sql, fetch_all=True)
-
-    def get_all_organizations(self):
-        """Retrieves all records from the Organization table."""
-        sql = "SELECT organization_id, name FROM Organization;"
-        return self.execute_query(sql, fetch_all=True)
-
-    def get_all_resellers(self):
-        """Retrieves all records from the Reseller table."""
-        sql = "SELECT reseller_id, reseller_name FROM Reseller;"
-        return self.execute_query(sql, fetch_all=True)
-
-    # Note: A 'get_all_users' is usually omitted or protected for security reasons.
-    # Note: Listing all transactions might be too slow/large and is usually limited by date/pagination.
+    # Return ebay items related to a given user id
+    def get_ebay_items_by_user_id(self, user_id: int):
+        """
+        Retrieves all EbayItem records linked to the Ebay account of the specified AppUser.
+        
+        NOTE: This assumes the existence of an 'EbayItem' table which is linked 
+        via 'ebay_account_id' to the 'Ebay' table, which is in turn linked to 'AppUser'.
+        You must create the 'EbayItem' table in your database schema for this to work.
+        """
+        sql = """
+            SELECT 
+                ei.*
+            FROM 
+                AppUser au
+            JOIN 
+                Ebay e ON au.ebay_account_id = e.ebay_account_id
+            JOIN
+                EbayItem ei ON e.ebay_account_id = ei.ebay_account_id
+            WHERE 
+                au.user_id = %s;
+        """
+        return self.execute_query(sql, params=(user_id,), fetch_all=True)

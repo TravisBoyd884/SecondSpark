@@ -1,267 +1,341 @@
+# test_routes_organized.py
+
 import requests
 import time
 import json
+import random
+from datetime import datetime
 
 # --- Configuration ---
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://localhost:5000"  # Assuming your blueprint is registered at /api
 HEADERS = {"Content-Type": "application/json"}
 
 # Global variable to store IDs for dependent tests
 TEST_DATA = {
-    "org_id": None,
-    "reseller_id": None,
-    "user_id": 1, # Use a pre-existing user from schema.sql
-    "item_id": None,
-    "transaction_id": None,
-    "transaction_item_id": None
+    # Existing IDs from schema.sql for read tests
+    "EXISTING_USER_ID": 1,
+    "EXISTING_ITEM_ID": 1, 
+    "EXISTING_ORG_ID": 1,
+    "EXISTING_TRANSACTION_ID": 1,
+
+    # IDs for new objects created during tests
+    "new_org_id": None,
+    "new_item_id": None,
+    "new_transaction_id": None,
+    "new_transaction_item_id": None
 }
 
-
-def test_user_transactions_endpoint(BASE_URL):
-    """Tests the GET /users/<id>/transactions endpoint."""
-    print("\n\n#####################################################")
-    print("## 💸 USER TRANSACTIONS FETCH TEST")
-    print("#####################################################")
-    
-    # We will use user ID 1 (Jane Doe from schema.sql)
-    # The schema shows Jane Doe (user_id 1) created the 'Wireless Mouse' (item_id 1).
-    # The 'Wireless Mouse' is in transaction_id 1.
-    TEST_USER_ID = 1 
-    
-    # ======================================================================
-    # 1. GET /users/<id>/transactions
-    # ======================================================================
-    url = f"{BASE_URL}/users/{TEST_USER_ID}/transactions"
-    res = run_test(f"GET Transactions for User {TEST_USER_ID}", 'GET', url, expected_status=200)
-
-    # 2. Verification
-    if res and isinstance(res, list) and len(res) > 0:
-        # Check if transaction 1 (which includes Wireless Mouse) is present
-        found_transaction_1 = any(item[0] == 1 for item in res)
-        if found_transaction_1:
-            print(f"[PASSED] Verified that User {TEST_USER_ID} transactions were fetched and contain transaction 1.")
-        else:
-            print(f"[FAILED] Transactions fetched but did not contain expected transaction 1.")
-    elif res and len(res) == 0:
-        print(f"[FAILED] Expected transactions for User {TEST_USER_ID} but received an empty list.")
-    elif res is None:
-        print(f"[FAILED] Received no response data.")
-
-    # Test for a user with no transactions (e.g., a high, unlinked ID)
-    NON_EXISTENT_USER_ID = 999 
-    run_test(f"GET Transactions for Non-Existent User {NON_EXISTENT_USER_ID}", 'GET', 
-             f"{BASE_URL}/users/{NON_EXISTENT_USER_ID}/transactions", expected_status=404)
-
-
-def test_user_endpoints(BASE_URL):
-    """Tests the AppUser CRUD and Login endpoints."""
-    print("\n\n#####################################################")
-    print("## 👤 APPUSER CRUD & LOGIN TESTS")
-    print("#####################################################")
-    
-    # Define a test user
-    TEST_USERNAME = "test_user_001"
-    TEST_EMAIL = "test@example.com"
-    TEST_ORG_ID = 1 # TechCorp from schema.sql
-    TEST_PASSWORD = "secure_password"
-    
-    # ======================================================================
-    # 1. POST /users (CREATE)
-    # ======================================================================
-    new_user_data = {
-        "username": TEST_USERNAME,
-        "password": TEST_PASSWORD,
-        "email": TEST_EMAIL,
-        "organization_id": TEST_ORG_ID,
-        "organization_role": "Tester"
-    }
-    
-    run_test("POST Create New User", 'POST', f"{BASE_URL}/users", 
-             data=new_user_data, expected_status=201)
-
-    # ======================================================================
-    # 2. LOGIN /login (READ by Username/Password - as defined in routes.py)
-    # ======================================================================
-    login_data = {
-        "username": TEST_USERNAME,
-        "password": TEST_PASSWORD
-    }
-    login_res = run_test("LOGIN Test User", 'POST', f"{BASE_URL}/login", 
-                         data=login_data, expected_status=200)
-
-    # Try to extract the user_id for subsequent tests (assuming 6 since schema.sql has 5)
-    NEW_USER_ID = login_res.get("user_id") if login_res else 6 
-    print(f"[INFO] New User ID determined to be: {NEW_USER_ID}")
-
-
-    # ======================================================================
-    # 3. GET /users/<id> (READ Single)
-    # ======================================================================
-    run_test(f"GET User {NEW_USER_ID}", 'GET', f"{BASE_URL}/users/{NEW_USER_ID}")
-
-
-    # ======================================================================
-    # 4. PUT /users/<id> (UPDATE)
-    # ======================================================================
-    update_data = {
-        "organization_role": "Senior Tester",
-        "organization_id": 2 # GreenSoft from schema.sql
-    }
-    run_test(f"PUT Update User {NEW_USER_ID} Role/Org", 'PUT', f"{BASE_URL}/users/{NEW_USER_ID}", 
-             data=update_data, expected_status=200)
-
-    # Verify update (optional)
-    run_test(f"GET User {NEW_USER_ID} (Verify Update)", 'GET', f"{BASE_URL}/users/{NEW_USER_ID}")
-
-    
-    # ======================================================================
-    # 5. DELETE /users/<id> (DELETE)
-    # ======================================================================
-    run_test(f"DELETE User {NEW_USER_ID}", 'DELETE', f"{BASE_URL}/users/{NEW_USER_ID}", 
-             expected_status=200)
-
-# --- End of function ---
+# --- Helper Function (Copied from previous context for completeness) ---
 
 def run_test(name, method, url, data=None, expected_status=200):
-    """Helper function to run an HTTP request and print the result."""
+    """
+    Executes an API request and prints the result.
+    Returns the JSON response data or None on failure.
+    """
     print(f"\n--- Running Test: {name} ---")
     try:
         if method == 'GET':
-            response = requests.get(url)
+            response = requests.get(url, headers=HEADERS)
         elif method == 'POST':
             response = requests.post(url, headers=HEADERS, data=json.dumps(data))
         elif method == 'PUT':
             response = requests.put(url, headers=HEADERS, data=json.dumps(data))
+        elif method == 'PATCH':
+            response = requests.patch(url, headers=HEADERS, data=json.dumps(data))
         elif method == 'DELETE':
-            response = requests.delete(url)
+            response = requests.delete(url, headers=HEADERS)
         else:
-            print("Invalid method specified.")
-            return False
+            print(f"[FAIL] Invalid HTTP method: {method}")
+            return None
 
-        # Status Check
-        if response.status_code == expected_status:
-            status_text = "PASSED"
-        else:
-            status_text = "FAILED"
-        
-        print(f"[{status_text}] Status: {response.status_code} (Expected: {expected_status})")
-        print(f"Response Body: {response.text}")
-        
-        return response.json() if response.content else None
+        status_match = response.status_code == expected_status
+        print(f"[{'PASS' if status_match else 'FAIL'}] {method} {url}")
+        print(f"Status: {response.status_code} (Expected: {expected_status})")
+
+        try:
+            res_data = response.json()
+            if not status_match:
+                 print(f"Response: {res_data}")
+            elif status_match and method != 'DELETE':
+                 print(f"Success Payload: {res_data}")
+            return res_data
+        except json.JSONDecodeError:
+            print(f"[ERROR] Could not decode JSON response: {response.text}")
+            return None
 
     except requests.exceptions.ConnectionError:
-        print("[FAILED] Connection Error: Is the backend container running at localhost:5000?")
+        print(f"[FATAL] Could not connect to {BASE_URL}. Is the Flask app running?")
         return None
     except Exception as e:
-        print(f"[ERROR] An unexpected error occurred: {e}")
+        print(f"[FATAL] An unexpected error occurred: {e}")
         return None
 
 
-def main():
-    print("Waiting 10 seconds for Flask server and DB initialization...")
-    #time.sleep(10) # Give the Flask app a moment to start after DB is ready
+# ======================================================================
+# 1. AUTHENTICATION TEST
+# ======================================================================
 
-    # ======================================================================
-    # 1. SETUP: Create Organization, Reseller, and Item for Transaction tests
-    # ======================================================================
+def test_auth():
+    print("\n\n#####################################################")
+    print("## 🔐 AUTHENTICATION TEST")
+    print("#####################################################")
+
+    login_data = {
+        "username": "alice", # Assuming this user exists in schema.sql
+        "password": "pass123"
+    }
+
+    res = run_test("POST Login (Success)", 'POST', f"{BASE_URL}/login", 
+             data=login_data, expected_status=200)
+
+    if res and res.get('user') and res['user'].get('user_id'):
+        print(f"[INFO] Alice's user_id: {res['user']['user_id']}")
+        # Store for item creation dependency
+        TEST_DATA["EXISTING_USER_ID"] = res['user']['user_id']
+    else:
+        # If login fails, subsequent tests will likely fail, so we exit early
+        print("[FATAL] Login failed. Cannot proceed with dependent tests.")
+        exit()
+    
+    # Negative test
+    run_test("POST Login (Failure)", 'POST', f"{BASE_URL}/login", 
+             data={"username": "alice", "password": "wrong_password"}, expected_status=401)
+
+
+# ======================================================================
+# 2. ORGANIZATION CRUD TESTS
+# ======================================================================
+
+def test_organization_crud():
+    print("\n\n#####################################################")
+    print("## 🏢 ORGANIZATION CRUD TESTS")
+    print("#####################################################")
     
     # POST /organizations
-    res = run_test("SETUP: Create Organization", 'POST', f"{BASE_URL}/organizations", 
-                   data={"name": "TestCorp"}, expected_status=201)
-    if res:
-        # Assuming you'd implement a way to get the new ID on creation
-        # For simplicity, we'll try to find it via a lookup here (since the create endpoint doesn't return the ID)
-        lookup_res = requests.get(f"{BASE_URL}/organizations/1") 
-        if lookup_res.status_code != 200:
-            print("[INFO] Cannot dynamically get new ID, using existing ID 1 for test.")
-        
-    # POST /resellers
-    res = run_test("SETUP: Create Reseller", 'POST', f"{BASE_URL}/resellers", 
-                   data={"reseller_name": "TestMarket"}, expected_status=201)
-    # POST /items
-    item_data = {
-        "title": "Test Product A",
-        "description": "Used for testing endpoints.",
-        "category": "Test",
-        "list_date": "2025-11-15",
-        "creator_id": TEST_DATA["user_id"]
-    }
-    run_test("SETUP: Create Item", 'POST', f"{BASE_URL}/items", 
-             data=item_data, expected_status=201)
-
-    # --- Fetch dynamically created IDs (Best practice is to return ID in POST response) ---
-    # Since POST doesn't return ID, we'll use existing IDs 1-5 from schema.sql for reliability
-    TEST_DATA["item_id"] = 1 # Wireless Mouse ID
-    TEST_DATA["reseller_id"] = 1 # BestBuy ID
+    org_name = f"TestOrg-{random.randint(1000, 9999)}"
+    post_data = {"name": org_name}
+    res = run_test("POST Create Organization", 'POST', f"{BASE_URL}/organizations", 
+             data=post_data, expected_status=201)
     
-    # ======================================================================
-    # 2. ITEM CRUD TESTS
-    # ======================================================================
+    if res and res.get('organization_id'):
+        TEST_DATA["new_org_id"] = res['organization_id']
+        print(f"[INFO] New Organization ID: {TEST_DATA['new_org_id']}")
+    else:
+        print("[FATAL] Failed to create organization. Cannot proceed with CRUD.")
+        return
+
+    # GET /organizations/<id>
+    run_test(f"GET Organization {TEST_DATA['new_org_id']} Details", 'GET', 
+             f"{BASE_URL}/organizations/{TEST_DATA['new_org_id']}")
+
+    # GET /organizations
+    run_test("GET All Organizations", 'GET', f"{BASE_URL}/organizations")
+
+    # PUT /organizations/<id>
+    updated_name = f"{org_name}-Updated"
+    put_data = {"name": updated_name}
+    run_test(f"PUT Update Organization {TEST_DATA['new_org_id']}", 'PUT', 
+             f"{BASE_URL}/organizations/{TEST_DATA['new_org_id']}", data=put_data, expected_status=200)
+
+    # DELETE /organizations/<id>
+    run_test(f"DELETE Organization {TEST_DATA['new_org_id']}", 'DELETE', 
+             f"{BASE_URL}/organizations/{TEST_DATA['new_org_id']}", expected_status=200)
+
+
+# ======================================================================
+# 3. ITEM CRUD & Custom Fetch TESTS
+# ======================================================================
+
+def test_item_crud_and_fetch():
+    print("\n\n#####################################################")
+    print("## 📦 ITEM CRUD & CUSTOM FETCH TESTS")
+    print("#####################################################")
+
+    # POST /items
+    item_title = f"NewTestItem-{random.randint(1000, 9999)}"
+    post_data = {
+        "title": item_title,
+        "price": 99.99,
+        "description": "A new gadget for testing.",
+        "category": "Gadgets",
+        "list_date": datetime.now().strftime("%Y-%m-%d"),
+        "creator_id": TEST_DATA["EXISTING_USER_ID"], 
+    }
+    res = run_test("POST Create Item", 'POST', f"{BASE_URL}/items", 
+             data=post_data, expected_status=201)
+
+    if res and res.get('item_id'):
+        TEST_DATA["new_item_id"] = res['item_id']
+        print(f"[INFO] New Item ID: {TEST_DATA['new_item_id']}")
+    else:
+        print("[FATAL] Failed to create item. Cannot proceed with dependent tests.")
+        return
+
+    # GET /items/<id>
+    run_test(f"GET Item {TEST_DATA['new_item_id']} Details", 'GET', 
+             f"{BASE_URL}/items/{TEST_DATA['new_item_id']}")
 
     # GET /items
     run_test("GET All Items", 'GET', f"{BASE_URL}/items")
 
-    # GET /items/<id>
-    run_test(f"GET Item {TEST_DATA['item_id']}", 'GET', f"{BASE_URL}/items/{TEST_DATA['item_id']}")
+    # GET /users/<id>/items (New Custom Route)
+    res_items = run_test(f"GET Items for User {TEST_DATA['EXISTING_USER_ID']}", 'GET', 
+             f"{BASE_URL}/users/{TEST_DATA['EXISTING_USER_ID']}/items", expected_status=200)
+    if res_items and isinstance(res_items, list):
+         print(f"[INFO] Fetched {len(res_items)} items for user {TEST_DATA['EXISTING_USER_ID']}")
+
+    res_txs = run_test(f"GET Transactions for Item {TEST_DATA['EXISTING_ITEM_ID']}", 'GET', 
+             f"{BASE_URL}/items/{TEST_DATA['EXISTING_ITEM_ID']}/transactions", expected_status=200)
+    if res_txs and isinstance(res_txs, list):
+         print(f"[INFO] Fetched {len(res_txs)} transactions associated with item {TEST_DATA['EXISTING_ITEM_ID']}")
 
     # PUT /items/<id>
-    run_test(f"UPDATE Item {TEST_DATA['item_id']}", 'PUT', f"{BASE_URL}/items/{TEST_DATA['item_id']}", 
-             data={"category": "Electronics - Updated", "description": "Updated for test"}, 
-             expected_status=200)
-
-    # ======================================================================
-    # 2. ITEM CRUD TESTS
-    # ======================================================================
-
-    test_user_endpoints(BASE_URL)
-
-    # ======================================================================
-    # 3. TRANSACTION AND LINKING TESTS
-    # ======================================================================
-
-    # POST /transactions
-    transaction_data = {
-        "sale_date": "2025-11-15",
-        "total": 99.99,
-        "tax": 5.00,
-        "reseller_comission": 10.00,
-        "reseller_id": TEST_DATA["reseller_id"]
+    updated_title = f"{item_title}-Updated"
+    put_data = {
+        "title": updated_title,
+        "price": 109.99,
+        "description": "Updated description.",
+        "category": "Updated Gadgets",
+        "list_date": "2025-01-01",
+        "creator_id": TEST_DATA["EXISTING_USER_ID"] # Required to maintain data integrity
     }
-    run_test("POST Create Transaction", 'POST', f"{BASE_URL}/transactions", 
-             data=transaction_data, expected_status=201)
+    run_test(f"PUT Update Item {TEST_DATA['new_item_id']}", 'PUT', 
+             f"{BASE_URL}/items/{TEST_DATA['new_item_id']}", data=put_data, expected_status=200)
+
+
+# ======================================================================
+# 4. TRANSACTION CRUD & Custom Fetch TESTS
+# ======================================================================
+
+def test_transaction_crud_and_fetch():
+    print("\n\n#####################################################")
+    print("## 💸 TRANSACTION CRUD & CUSTOM FETCH TESTS")
+    print("#####################################################")
     
-    # --- Fetch the new transaction_id (using existing ID 1 for reliability) ---
-    TEST_DATA["transaction_id"] = 1
+    # POST /transactions (IMPORTANT: Use 'reseller_id' and 'reseller_comission' for test compatibility)
+    post_data = {
+        "sale_date": datetime.now().strftime("%Y-%m-%d"),
+        "total": 550.00,
+        "tax": 35.00,
+        "reseller_comission": 25.00, # Maps to seller_comission in DB
+        "reseller_id": TEST_DATA["EXISTING_USER_ID"] # Maps to seller_id in DB
+    }
+    res = run_test("POST Create Transaction", 'POST', f"{BASE_URL}/transactions", 
+             data=post_data, expected_status=201)
+    
+    if res and res.get('transaction_id'):
+        TEST_DATA["new_transaction_id"] = res['transaction_id']
+        print(f"[INFO] New Transaction ID: {TEST_DATA['new_transaction_id']}")
+    else:
+        print("[FATAL] Failed to create transaction. Cannot proceed with dependent tests.")
+        return
+
+    # GET /transactions/<id>
+    run_test(f"GET Transaction {TEST_DATA['new_transaction_id']} Details (No items yet)", 'GET', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}")
+
+    # GET /users/<id>/transactions (New Custom Route)
+    res_txs = run_test(f"GET Transactions for User {TEST_DATA['EXISTING_USER_ID']}", 'GET', 
+             f"{BASE_URL}/users/{TEST_DATA['EXISTING_USER_ID']}/transactions", expected_status=200)
+    if res_txs and isinstance(res_txs, list):
+         print(f"[INFO] Fetched {len(res_txs)} transactions for user {TEST_DATA['EXISTING_USER_ID']}")
+
+    # PUT /transactions/<id>
+    put_data = {
+        "sale_date": "2025-02-02",
+        "total": 600.00,
+        "tax": 40.00,
+        "reseller_comission": 30.00, # Maps to seller_comission in DB
+        "reseller_id": TEST_DATA["EXISTING_USER_ID"] # Maps to seller_id in DB
+    }
+    run_test(f"PUT Update Transaction {TEST_DATA['new_transaction_id']}", 'PUT', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}", data=put_data, expected_status=200)
+
+# ======================================================================
+# 5. TRANSACTION ITEM LINK TESTS
+# ======================================================================
+
+def test_transaction_item_link():
+    print("\n\n#####################################################")
+    print("## 🔗 TRANSACTION ITEM LINK TESTS")
+    print("#####################################################")
+
+    if not TEST_DATA["new_item_id"] or not TEST_DATA["new_transaction_id"]:
+        print("[SKIP] Item or Transaction ID missing. Skipping link tests.")
+        return
 
     # POST /transactions/link
     link_data = {
-        "item_id": TEST_DATA["item_id"],
-        "transaction_id": TEST_DATA["transaction_id"]
+        "item_id": TEST_DATA["new_item_id"],
+        "transaction_id": TEST_DATA["new_transaction_id"]
     }
-    run_test("POST Link Item to Transaction", 'POST', f"{BASE_URL}/transactions/link", 
+    res = run_test("POST Link Item to Transaction", 'POST', f"{BASE_URL}/transactions/link", 
              data=link_data, expected_status=201)
 
-    # GET /transactions/<id> (Verify the link)
-    run_test(f"GET Transaction {TEST_DATA['transaction_id']} Details", 'GET', 
-             f"{BASE_URL}/transactions/{TEST_DATA['transaction_id']}")
-    
-    # --- Fetch the transaction_item_id (using existing ID 1 for reliability) ---
-    TEST_DATA["transaction_item_id"] = 1
+    if res and res.get('transaction_item_id'):
+        TEST_DATA["new_transaction_item_id"] = res['transaction_item_id']
+        print(f"[INFO] New Link ID: {TEST_DATA['new_transaction_item_id']}")
+    else:
+        print("[FATAL] Failed to create link. Cannot proceed with unlink test.")
+        return
 
+    # GET /transactions/<id>/items (New Custom Route)
+    res_items = run_test(f"GET Items for Transaction {TEST_DATA['new_transaction_id']}", 'GET', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}/items", expected_status=200)
+    if res_items and isinstance(res_items, list) and len(res_items) > 0:
+         print(f"[PASS] Successfully fetched {len(res_items)} items for the new transaction.")
+         
+    # GET /transactions/<id> (Verify the link is included in the transaction details)
+    run_test(f"GET Transaction {TEST_DATA['new_transaction_id']} Details (Verify Link)", 'GET', 
+             f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}")
+    
     # DELETE /transactions/unlink/<id>
-    run_test(f"DELETE Unlink Transaction Item {TEST_DATA['transaction_item_id']}", 'DELETE', 
-             f"{BASE_URL}/transactions/unlink/{TEST_DATA['transaction_item_id']}", expected_status=200)
+    run_test(f"DELETE Unlink Transaction Item {TEST_DATA['new_transaction_item_id']}", 'DELETE', 
+             f"{BASE_URL}/transactions/unlink/{TEST_DATA['new_transaction_item_id']}", expected_status=200)
 
-    # Test enpoint for retieving transactions per user
-    test_user_transactions_endpoint(BASE_URL)
 
-    # ======================================================================
-    # 4. CLEANUP (Optional, uncomment if you want to test delete functionality)
-    # ======================================================================
+# ======================================================================
+# 6. CLEANUP (DELETE Tests)
+# ======================================================================
+
+def test_cleanup():
+    print("\n\n#####################################################")
+    print("## 🧹 CLEANUP (DELETE) TESTS")
+    print("#####################################################")
+
+    # Order matters due to foreign key constraints: Transaction -> Item -> Organization
     
-    # run_test(f"DELETE Item {TEST_DATA['item_id']}", 'DELETE', f"{BASE_URL}/items/{TEST_DATA['item_id']}", expected_status=200)
-    # run_test(f"DELETE Organization {TEST_DATA['org_id']}", 'DELETE', f"{BASE_URL}/organizations/{TEST_DATA['org_id']}", expected_status=200)
-    # run_test(f"DELETE Transaction {TEST_DATA['transaction_id']}", 'DELETE', f"{BASE_URL}/transactions/{TEST_DATA['transaction_id']}", expected_status=200)
+    if TEST_DATA["new_transaction_id"]:
+        run_test(f"DELETE Transaction {TEST_DATA['new_transaction_id']}", 'DELETE', 
+                 f"{BASE_URL}/transactions/{TEST_DATA['new_transaction_id']}", expected_status=200)
 
-if __name__ == '__main__':
-    main()
+    if TEST_DATA["new_item_id"]:
+        run_test(f"DELETE Item {TEST_DATA['new_item_id']}", 'DELETE', 
+                 f"{BASE_URL}/items/{TEST_DATA['new_item_id']}", expected_status=200)
+    
+    if TEST_DATA["new_org_id"]:
+        run_test(f"DELETE Organization {TEST_DATA['new_org_id']}", 'DELETE', 
+                 f"{BASE_URL}/organizations/{TEST_DATA['new_org_id']}", expected_status=200)
+
+
+# ======================================================================
+# MAIN EXECUTION
+# ======================================================================
+
+if __name__ == "__main__":
+    print("#####################################################")
+    print("## STARTING API ROUTE TESTS")
+    print("#####################################################")
+
+    test_auth()
+    test_organization_crud()
+    test_item_crud_and_fetch()
+    test_transaction_crud_and_fetch()
+    test_transaction_item_link()
+    
+    # Optional: Run cleanup to remove test data
+    # test_cleanup() 
+    
+    print("\n#####################################################")
+    print("## API ROUTE TESTS COMPLETE")
+    print("#####################################################")
