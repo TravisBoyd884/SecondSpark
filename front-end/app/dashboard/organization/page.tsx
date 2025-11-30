@@ -8,7 +8,7 @@ import { organizations, users } from '@/app/lib/placeholder-data';
 
 export default function Page() {
   const [organization, setOrganization] = useState<Organization | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
+  const [usersList, setUsersList] = useState<User[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -18,8 +18,8 @@ export default function Page() {
     getUserOrganization();
     getOrganizationUsers();
     setOrganization(organizations[0]);
-    setUsers(users);
     setSelectedOrganization(organizations[0]);
+    setUsersList(users as User[]);
   }, []);
 
   const getUserOrganization = async () => {
@@ -52,7 +52,7 @@ export default function Page() {
       }
       const data = await response.json();
       console.log(data);
-      setUsers(data);
+      setUsersList(data);
     } catch (error) {
       console.error('Error fetching users:', error);
     }
@@ -148,7 +148,7 @@ export default function Page() {
       }
 
       // Remove user from local state
-      setUsers(users.filter(user => user.user_id !== user_id));
+      setUsersList(usersList.filter(user => user.user_id !== user_id));
     } catch (error) {
       console.error("Error deleting user:", error);
       alert("An error occurred while deleting the user");
@@ -216,7 +216,7 @@ export default function Page() {
       console.log("User updated successfully:", data);
       
       // Update local state
-      setUsers(users.map(user => 
+      setUsersList(usersList.map(user => 
         user.user_id === updatedUser.user_id 
           ? { ...user, ...updatedUser }
           : user
@@ -245,16 +245,34 @@ export default function Page() {
         <p className="text-lg font-bold">ID: {organization?.organization_id}</p>
       </div>
       <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer" onClick={handleOpenOrganizationModal}>Update Organization</button>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 mt-4">
         <p className="text-lg font-bold">Users:</p>
-        <div className="flex flex-col gap-2">
-          {users.map((user) => (
-            <div className="flex flex-row gap-2">
-              <p key={user.user_id}>{user.username}</p>
-              <button className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 cursor-pointer" onClick={() => handleDeleteUser(user.user_id)}>Delete User</button>
-              <button className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 cursor-pointer" onClick={() => handleOpenUserModal(user)}>Update User</button>
-            </div>
-          ))}
+        <div className="overflow-x-auto">
+          <table className="w-full bg-gray-100 border-collapse">
+            <thead>
+              <tr className="bg-gray-200">
+                <th className="border border-gray-300 px-4 py-2 text-left">Username</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">Email</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">Role</th>
+                <th className="border border-gray-300 px-4 py-2 text-left">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usersList.map((user) => (
+                <tr key={user.user_id} className="bg-gray-50 hover:bg-gray-100">
+                  <td className="border border-gray-300 px-4 py-2">{user.username}</td>
+                  <td className="border border-gray-300 px-4 py-2">{user.email}</td>
+                  <td className="border border-gray-300 px-4 py-2">{user.organization_role}</td>
+                  <td className="border border-gray-300 px-4 py-2">
+                    <div className="flex gap-4 justify-start">
+                      <button className="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 cursor-pointer" onClick={() => handleDeleteUser(user.user_id)}>Delete User</button>
+                      <button className="bg-white text-black border border-gray-300 px-6 py-2 rounded-md hover:bg-green-600 cursor-pointer" onClick={() => handleOpenUserModal(user)}>Update User</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
       <UserModal show={showUserModal} onHide={handleCloseUserModal} user={selectedUser} onSave={handleSaveUser} />

@@ -184,8 +184,8 @@ export default function ItemsGridTest() {
                         <h2 className="text-lg font-bold mb-2">{item.title}</h2>
                         <p className="flex-grow mb-4">{item.description}</p>
                         <div className="flex gap-4 mt-auto">
-                            <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer" onClick={() => handleViewItem(item)}>View</button>
-                            <button className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 cursor-pointer" onClick={() => handleDeleteItem()}>Delete</button>
+                            <button className="bg-white text-black border border-black px-4 py-2 rounded-md hover:bg-gray-100 cursor-pointer" onClick={() => handleViewItem(item)}>View</button>
+                            <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 cursor-pointer" onClick={() => handleDeleteItem()}>Delete</button>
                         </div>
                     </div>
                 ))}
