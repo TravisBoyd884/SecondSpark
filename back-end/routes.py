@@ -176,7 +176,7 @@ class APIRoutes:
                 return jsonify({"error": f"Organization with ID {organization_id} not found"}), 404
 
             # Perform the creation
-            success = self.db.create_user(
+            success = self.db.create_app_user(
                 username, password, email, organization_id, organization_role
             )
             
