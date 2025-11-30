@@ -101,6 +101,71 @@ def test_auth():
     run_test("POST Login (Failure)", 'POST', f"{BASE_URL}/login", 
              data={"username": "alice", "password": "wrong_password"}, expected_status=401)
 
+def test_register_user():
+    """Tests the /api/register route functionality."""
+    
+    # --- Test 1: Successful Registration ---
+    # Use random numbers to ensure unique username and email for each test run
+    unique_id = random.randint(10000, 99999) 
+    new_user_data = {
+        "username": f"test_reg_user_{unique_id}",
+        "password": "testpassword123",
+        "email": f"test.reg.user.{unique_id}@example.com",
+        "organization_id": TEST_DATA["EXISTING_ORG_ID"], # Assuming 1 is a valid ID from schema
+    }
+
+    result = run_test(
+        "Register New User - SUCCESS",
+        'POST',
+        f"{BASE_URL}/register",
+        data=new_user_data,
+        expected_status=201
+    )
+    
+    if result and "user_id" in result:
+        print(f"[INFO] Successfully created user with ID: {result['user_id']}")
+        # Note: If you add user cleanup to test_cleanup(), you would save the ID here.
+        
+    # --- Test 2: Missing Required Fields (Missing password) ---
+    missing_fields_data = {
+        "username": "fail_no_pass",
+        "email": "fail@example.com",
+        "organization_id": TEST_DATA["EXISTING_ORG_ID"],
+    }
+    run_test(
+        "Register User - FAIL (Missing password)",
+        'POST',
+        f"{BASE_URL}/register",
+        data=missing_fields_data,
+        expected_status=400
+    )
+
+    # --- Test 3: Non-existent Organization ---
+    nonexistent_org_data = {
+        "username": "fail_no_org",
+        "password": "p",
+        "email": "fail_org@example.com",
+        "organization_id": 99999,
+    }
+    run_test(
+        "Register User - FAIL (Non-existent Organization ID)",
+        'POST',
+        f"{BASE_URL}/register",
+        data=nonexistent_org_data,
+        expected_status=404
+    )
+    
+    # --- Test 4: Duplicate Registration ---
+    # Use the same data as the successful test (Test 1). 
+    # Since the user was created, the second attempt should fail the unique constraint check.
+    if result and "user_id" in result:
+        run_test(
+            "Register User - FAIL (Duplicate username/email)",
+            'POST',
+            f"{BASE_URL}/register",
+            data=new_user_data,
+            expected_status=500 # Route logic returns 500 on DB unique constraint failure
+        )
 
 # ======================================================================
 # 2. ORGANIZATION CRUD TESTS
@@ -332,6 +397,7 @@ if __name__ == "__main__":
     test_item_crud_and_fetch()
     test_transaction_crud_and_fetch()
     test_transaction_item_link()
+    test_register_user()
     
     # Optional: Run cleanup to remove test data
     # test_cleanup() 
