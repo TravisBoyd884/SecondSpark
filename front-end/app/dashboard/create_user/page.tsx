@@ -3,14 +3,11 @@
 import { useState } from "react";
 import { createUser } from "@/app/lib/data";
 
-export default function RegisterPage() {
+export default function Page() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [organizationId, setOrganizationId] = useState<string>("");
-  const [organizationRole, setOrganizationRole] = useState("");
-  const [ebayAccountId, setEbayAccountId] = useState<string>("");
-  const [etsyAccountId, setEtsyAccountId] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -22,36 +19,39 @@ export default function RegisterPage() {
     setMessage(null);
     setError(null);
 
+    const orgIdNumber = Number(organizationId);
+    if (!organizationId.trim() || Number.isNaN(orgIdNumber)) {
+      setError("Organization ID must be a valid number");
+      setLoading(false);
+      return;
+    }
+
     try {
       const result = await createUser({
         username,
         password,
         email,
-        organization_id:
-          organizationId.trim() === "" ? null : Number(organizationId),
-        organization_role:
-          organizationRole.trim() === "" ? null : organizationRole,
-        ebay_account_id:
-          ebayAccountId.trim() === "" ? null : Number(ebayAccountId),
-        etsy_account_id:
-          etsyAccountId.trim() === "" ? null : Number(etsyAccountId),
+        organization_id: orgIdNumber,
       });
 
       if ((result as any).error) {
         setError((result as any).error);
       } else {
-        setMessage("User created successfully");
-        // optional: clear form
+        const msg = (result as any).message || "User registered successfully";
+        const userId =
+          (result as any).user_id !== undefined
+            ? ` (ID: ${(result as any).user_id})`
+            : "";
+        setMessage(msg + userId);
+
+        // Clear form
         setUsername("");
         setEmail("");
         setPassword("");
         setOrganizationId("");
-        setOrganizationRole("");
-        setEbayAccountId("");
-        setEtsyAccountId("");
       }
     } catch (err) {
-      setError("Something went wrong creating the user");
+      setError("Something went wrong registering the user");
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ export default function RegisterPage() {
         onSubmit={handleSubmit}
         className="w-full max-w-md space-y-4 border p-6 rounded-lg"
       >
-        <h1 className="text-2xl font-semibold text-center">Create User</h1>
+        <h1 className="text-2xl font-semibold text-center">Register</h1>
 
         {message && (
           <div className="text-green-600 text-sm text-center">{message}</div>
@@ -104,44 +104,14 @@ export default function RegisterPage() {
           />
         </div>
 
-        {/* Optional fields */}
         <div className="space-y-1">
-          <label className="block text-sm">Organization ID (optional)</label>
+          <label className="block text-sm">Organization ID</label>
           <input
             className="w-full border px-3 py-2 rounded"
             value={organizationId}
             onChange={(e) => setOrganizationId(e.target.value)}
             placeholder="e.g. 1"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="block text-sm">Organization Role (optional)</label>
-          <input
-            className="w-full border px-3 py-2 rounded"
-            value={organizationRole}
-            onChange={(e) => setOrganizationRole(e.target.value)}
-            placeholder="e.g. admin"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="block text-sm">eBay Account ID (optional)</label>
-          <input
-            className="w-full border px-3 py-2 rounded"
-            value={ebayAccountId}
-            onChange={(e) => setEbayAccountId(e.target.value)}
-            placeholder="e.g. 42"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="block text-sm">Etsy Account ID (optional)</label>
-          <input
-            className="w-full border px-3 py-2 rounded"
-            value={etsyAccountId}
-            onChange={(e) => setEtsyAccountId(e.target.value)}
-            placeholder="e.g. 7"
+            required
           />
         </div>
 
@@ -150,7 +120,7 @@ export default function RegisterPage() {
           className="w-full py-2 rounded bg-black text-white disabled:opacity-60"
           disabled={loading}
         >
-          {loading ? "Creating..." : "Create User"}
+          {loading ? "Registering..." : "Register"}
         </button>
       </form>
     </div>

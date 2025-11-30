@@ -30,31 +30,23 @@ export async function createUser({
   username,
   password,
   email,
-  organization_id = null,
-  organization_role = null,
-  ebay_account_id = null,
-  etsy_account_id = null,
+  organization_id,
 }: {
   username: string;
   password: string;
   email: string;
-  organization_id?: number | null;
-  organization_role?: string | null;
-  ebay_account_id?: number | null;
-  etsy_account_id?: number | null;
+  organization_id: number;
 }) {
   try {
-    const res = await api.post("/create_app_user", {
+    const res = await api.post("/register", {
       username,
       password,
       email,
       organization_id,
-      organization_role,
-      ebay_account_id,
-      etsy_account_id,
     });
 
-    return res.data; // "User created successfully"
+    // backend returns: { message: string, user_id: number }
+    return res.data;
   } catch (err: any) {
     if (err.response) return err.response.data;
     throw err;
