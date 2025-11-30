@@ -108,8 +108,8 @@ class APIRoutes:
             "sale_date": row.get("sale_date").isoformat() if row.get("sale_date") else None,
             "total": APIRoutes._safe_money_to_float(row.get("total")),
             "tax": APIRoutes._safe_money_to_float(row.get("tax")),
-            "reseller_comission": APIRoutes._safe_money_to_float(row.get("seller_comission")),
-            "reseller_id": row.get("seller_id"),
+            "seller_comission": APIRoutes._safe_money_to_float(row.get("seller_comission")),
+            "seller_id": row.get("seller_id"),
         }
 
     # ------------------------------------------------------------------
@@ -323,6 +323,27 @@ class APIRoutes:
         # ----------------------------
         # Organizations
         # ----------------------------
+
+        @api.route("/organizations/<int:organization_id>/users", methods=["GET"])
+        def get_organization_users(organization_id):
+            """
+            Retrieves all AppUser records belonging to a specific organization ID.
+            """
+            # 1. Check if the organization exists for a clean 404 response
+            org_row = self.db.get_organization_by_id(organization_id)
+            if not org_row:
+                return jsonify({"error": f"Organization {organization_id} not found"}), 404
+
+            # 2. Fetch all users for that organization
+            rows = self.db.get_app_users_by_organization_id(organization_id)
+            
+            if not rows:
+                # Organization exists but has no users (returns an empty list)
+                return jsonify([]), 200 
+
+            # 3. Clean and return the list of user dictionaries (removes password)
+            users = [self._user_row_to_dict(row) for row in rows]
+            return jsonify(users), 200
 
         @api.route("/organizations", methods=["GET"])
         def get_organizations():
