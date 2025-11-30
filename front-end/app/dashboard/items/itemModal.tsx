@@ -18,7 +18,7 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
     const [isOnEtsy, setIsOnEtsy] = useState(false);
     const [isOnEbay, setIsOnEbay] = useState(false);
     const [creatorId, setCreatorId] = useState('');
-
+    const [price, setPrice] = useState(0);
     useEffect(() => {
         if (item) {
             setTitle(item.title || '');
@@ -28,6 +28,7 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
             setIsOnEtsy(item.isOnEtsy || false);
             setIsOnEbay(item.isOnEbay || false);
             setCreatorId(item.creator_id || '');
+            setPrice(item.price || 0);
         }
     }, [item]);
 
@@ -43,7 +44,7 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     <input
                         id="title"
                         type="text"
-                        className="modal-title border border-gray-300 rounded-md px-3 py-2"
+                        className="modal-title border border-gray-300 rounded-md px-3 py-2 w-full"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                     />
@@ -52,10 +53,20 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     <label htmlFor="description" className="font-semibold">Description</label>
                     <textarea
                         id="description"
-                        className="modal-description border border-gray-300 rounded-md px-3 py-2"
+                        className="modal-description border border-gray-300 rounded-md px-3 py-2 resize-none w-full"
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
-                        rows={3}
+                        rows={4}
+                    />
+                </div>
+                <div className="flex flex-col gap-2">
+                    <label htmlFor="price" className="font-semibold">Price</label>
+                    <input
+                        id="price"
+                        type="number"
+                        className="modal-price border border-gray-300 rounded-md px-3 py-2 w-full"
+                        value={price?.toString() || ''}
+                        onChange={(e) => setPrice(parseFloat(e.target.value))}
                     />
                 </div>
                 <div className="flex flex-col gap-2">
@@ -63,7 +74,7 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     <input
                         id="category"
                         type="text"
-                        className="modal-category border border-gray-300 rounded-md px-3 py-2"
+                        className="modal-category border border-gray-300 rounded-md px-3 py-2 w-full"
                         value={category}
                         onChange={(e) => setCategory(e.target.value)}
                     />
@@ -73,7 +84,7 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     <input
                         id="list_date"
                         type="date"
-                        className="modal-list-date border border-gray-300 rounded-md px-3 py-2"
+                        className="modal-list-date border border-gray-300 rounded-md px-3 py-2 w-full"
                         value={listDate}
                         onChange={(e) => setListDate(e.target.value)}
                     />
@@ -103,7 +114,7 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     <input
                         id="creator_id"
                         type="text"
-                        className="modal-creator-id border border-gray-300 rounded-md px-3 py-2"
+                        className="modal-creator-id border border-gray-300 rounded-md px-3 py-2 w-full"
                         value={creatorId}
                         onChange={(e) => setCreatorId(e.target.value)}
                     />
@@ -113,12 +124,13 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     <button className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 cursor-pointer" onClick={() => onSave({
                         title,
                         description,
+                        price,
                         category,
                         list_date: listDate,
                         isOnEtsy,
                         isOnEbay,
                         creator_id: creatorId,
-                        item_id: item?.item_id
+                        item_id: item?.item_id || ''
                     })}>Save</button>
                     <button className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 cursor-pointer" onClick={onDelete}>Delete</button>
                     <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer" onClick={onHide}>Close</button>

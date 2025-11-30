@@ -23,17 +23,39 @@ export default function Page() {
   }, []);
 
   const getUserOrganization = async () => {
-    const response = await fetch("/api/organization");
-    const data = await response.json();
-    console.log(data);
-    setOrganization(data);
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      // Get all organizations and use the first one, or get by ID if we have it
+      // Note: If you have the organization_id from user context, use: /organizations/<id>
+      const response = await fetch(`${apiBaseUrl}/organizations`);
+      if (!response.ok) {
+        console.error('Failed to fetch organizations');
+        return;
+      }
+      const data = await response.json();
+      console.log(data);
+      // If data is an array, take the first organization; otherwise use the single object
+      const org = Array.isArray(data) ? data[0] : data;
+      setOrganization(org);
+    } catch (error) {
+      console.error('Error fetching organization:', error);
+    }
   }
 
   const getOrganizationUsers = async () => {
-    const response = await fetch("/api/users");
-    const data = await response.json();
-    console.log(data);
-    setUsers(data);
+    try {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBaseUrl}/users`);
+      if (!response.ok) {
+        console.error('Failed to fetch users');
+        return;
+      }
+      const data = await response.json();
+      console.log(data);
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
   }
 
   const handleViewUser = (user: User) => {
@@ -68,7 +90,8 @@ export default function Page() {
     }
 
     try {
-      const response = await fetch(`/api/organizations/${orgId}`, {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBaseUrl}/organizations/${orgId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +135,8 @@ export default function Page() {
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBaseUrl}/users/${userId}`, {
         method: "DELETE",
       });
 
@@ -154,15 +178,31 @@ export default function Page() {
     }
 
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      // Prepare the update payload with all fields from the modal
+      const updatePayload: any = {};
+      
+      if (updatedUser.email !== undefined) {
+        updatePayload.email = updatedUser.email;
+      }
+      if (updatedUser.password !== undefined) {
+        updatePayload.password = updatedUser.password;
+      }
+      if (updatedUser.organization_role !== undefined) {
+        updatePayload.organization_role = updatedUser.organization_role;
+      }
+      if (updatedUser.organization_id !== undefined) {
+        updatePayload.organization_id = typeof updatedUser.organization_id === 'string' 
+          ? parseInt(updatedUser.organization_id) 
+          : updatedUser.organization_id;
+      }
+      
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiBaseUrl}/users/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          organization_role: updatedUser.organization_role,
-          organization_id: updatedUser.organization_id ? parseInt(updatedUser.organization_id) : undefined,
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {

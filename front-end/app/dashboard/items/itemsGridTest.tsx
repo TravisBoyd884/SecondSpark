@@ -33,6 +33,7 @@ export default function ItemsGridTest() {
                 description: item.description || '',
                 category: item.category || '',
                 list_date: item.list_date || '',
+                price: item.price || 0,
                 isOnEtsy: item.isOnEtsy || false,
                 isOnEbay: item.isOnEbay || false,
                 creator_id: String(item.creator_id || ''),
@@ -89,8 +90,10 @@ export default function ItemsGridTest() {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
+                        title: updatedItem.title,
                         description: updatedItem.description,
                         category: updatedItem.category,
+                        list_date: updatedItem.list_date,
                     }),
                 });
 
@@ -160,6 +163,7 @@ export default function ItemsGridTest() {
             description: '',
             category: '',
             list_date: '',
+            price: 0,
             isOnEtsy: false,
             isOnEbay: false,
             creator_id: '',
@@ -171,14 +175,15 @@ export default function ItemsGridTest() {
         <div>
             <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer mb-4 ml-4 mr-4" onClick={handleCreateItem}>Create Item</button>
             <input type="text" className="border border-gray-300 rounded-md px-3 py-2 mb-4 ml-4 mr-4 w-4/5" placeholder="Search items" onChange={(e) => setSearch(e.target.value)} />
-            <div className="flex flex-wrap justify-content-center gap-4 mt-4 mb-4">
-                <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} onSave={handleSaveItem} />
+            <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} onSave={handleSaveItem} />
+            <div className="grid grid-cols-3 gap-4 mt-4 mb-4">
+                
                 
                 {items.map((item) => (
-                    <div className="card p-4 shadow-sm rounded-md" key={item.item_id}>
-                        <h2 className="text-lg font-bold">{item.title}</h2>
-                        <p>{item.description}</p>
-                        <div className="flex gap-4">
+                    <div className="card p-4 shadow-sm rounded-md h-full flex flex-col" key={item.item_id}>
+                        <h2 className="text-lg font-bold mb-2">{item.title}</h2>
+                        <p className="flex-grow mb-4">{item.description}</p>
+                        <div className="flex gap-4 mt-auto">
                             <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer" onClick={() => handleViewItem(item)}>View</button>
                             <button className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 cursor-pointer" onClick={() => handleDeleteItem()}>Delete</button>
                         </div>

@@ -3,14 +3,18 @@
     border: 1px solid #ccc;
     border-radius: 10px;
     padding: 20px;
-    width: auto;
-    height: auto;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: 600px;
     margin: 0 auto;
-    position: fixed;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .modal-title {
-    font-size: 24px;
+    font-size: 18px;
     font-weight: bold;
 }
 
@@ -34,11 +38,20 @@
     pointer-events: auto;
 }
 .modal-description {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: normal;
-    text-align: center;
-    font-style: italic;
+    text-align: left;
 }
 .modal-body {
-    padding: 20px;
+    padding: 0;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.modal-footer {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #ccc;
+    flex-shrink: 0;
 }
