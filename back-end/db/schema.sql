@@ -175,6 +175,7 @@ ADD CONSTRAINT fk_appuser_etsy
 -- TEST DATA
 -- ============================================================
 
+-- OLD TEST DATA:
 -- Organization
 INSERT INTO Organization (name) VALUES
 ('TechCorp'),
@@ -220,4 +221,3 @@ INSERT INTO AppTransaction_Item (item_id, transaction_id) VALUES
  (SELECT transaction_id FROM AppTransaction WHERE sale_date='2024-06-01'));
 
 
--- END OF TEST DATA
