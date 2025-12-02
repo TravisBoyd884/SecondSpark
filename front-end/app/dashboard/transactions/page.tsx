@@ -16,13 +16,7 @@ export default async function Page() {
         <Search placeholder="Search transactions..." />
         <CreateTransaction />
       </div>
-      {/*  <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
-        <Table query={query} currentPage={currentPage} />
-      </Suspense> */}
-      {/* <Table query={""} currentPage={1} /> */}
-      <div className="mt-5 flex w-full justify-center">
-        <Pagination totalPages={2} />
-      </div>
+      <Table query={""} currentPage={1} />
     </div>
   );
 }

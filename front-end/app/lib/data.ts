@@ -1,29 +1,62 @@
 import axios from "axios";
-import { Transaction } from "./definitions";
+import {
+  Transaction,
+  CreateTransactionPayload,
+  UpdateTransactionPayload,
+  LoginPayload,
+  LoginResponse,
+  RegisterPayload,
+  RegisterResponse,
+  AppUser,
+  ItemStat,
+  Revenue,
+} from "./definitions";
 
 export const api = axios.create({
   baseURL: "http://127.0.0.1:5000", // Flask default
 });
 
+export async function fetchLatestTransactions(userId: number) {
+  const res = await api.get<Transaction[]>(`/users/${userId}/transactions`);
+  const rows = res.data ?? [];
+
+  // Sort newest → oldest
+  rows.sort(
+    (a, b) => new Date(b.sale_date).getTime() - new Date(a.sale_date).getTime(),
+  );
+
+  // Return last 5
+  return rows.slice(0, 5);
+}
+
+// Auth
+export async function login(payload: LoginPayload): Promise<LoginResponse> {
+  const res = await api.post<LoginResponse>("/login", payload);
+  return res.data;
+}
+
+export async function registerUser(
+  payload: RegisterPayload,
+): Promise<RegisterResponse> {
+  const res = await api.post<RegisterResponse>("/register", payload);
+  return res.data;
+}
+
+export async function getUserById(userId: number): Promise<AppUser> {
+  const res = await api.get<AppUser>(`/users/${userId}`);
+  return res.data;
+}
+
 export async function getTransactions(): Promise<Transaction[]> {
-  const response = await api.get<Transaction[]>("/transactions");
+  const response = await api.get<Transaction[]>("/users/1/transactions");
   return response.data;
 }
 
-export async function login(username: string, password: string) {
-  try {
-    const res = await api.post("/login", {
-      username,
-      password,
-    });
-
-    return res.data; // contains { message, user }
-  } catch (err: any) {
-    if (err.response) {
-      return err.response.data; // backend error message
-    }
-    throw err;
-  }
+export async function createTransaction(
+  payload: CreateTransactionPayload,
+): Promise<Transaction> {
+  const response = await api.post<Transaction>("/transactions", payload);
+  return response.data;
 }
 
 export async function createUser({
@@ -51,4 +84,119 @@ export async function createUser({
     if (err.response) return err.response.data;
     throw err;
   }
+}
+
+export async function getUserItems(userId: number): Promise<ItemStat[]> {
+  const res = await api.get<ItemStat[]>(`/users/${userId}/items`);
+  return res.data;
+}
+
+export async function updateTransaction(
+  transactionId: number,
+  payload: UpdateTransactionPayload,
+): Promise<Transaction> {
+  const response = await api.patch<Transaction>(
+    `/transactions/${transactionId}`,
+    payload,
+  );
+  return response.data;
+}
+
+export async function deleteTransaction(transactionId: number) {
+  const response = await api.delete(`/transactions/${transactionId}`);
+  return response.data;
+}
+
+// Transaction Stats for Account Page
+export async function getUserTransactions(
+  userId: number,
+): Promise<Transaction[]> {
+  // you already effectively have this as /users/<id>/transactions
+  const res = await api.get<Transaction[]>(`/users/${userId}/transactions`);
+  return res.data;
+}
+
+export type UserStats = {
+  totalTransactions: number;
+  totalValue: number;
+  lastActivity: string | null; // ISO date string or null if none
+};
+
+export async function getUserStats(userId: number): Promise<UserStats> {
+  const txns = await getUserTransactions(userId);
+
+  if (txns.length === 0) {
+    return {
+      totalTransactions: 0,
+      totalValue: 0,
+      lastActivity: null,
+    };
+  }
+
+  const totalTransactions = txns.length;
+  const totalValue = txns.reduce((sum, t) => sum + (t.total ?? 0), 0);
+
+  // Find latest sale_date
+  const lastActivityDate = txns
+    .map((t) => t.sale_date)
+    .filter(Boolean)
+    .sort()
+    .at(-1)!; // last (max) date string
+
+  return {
+    totalTransactions,
+    totalValue,
+    lastActivity: lastActivityDate,
+  };
+}
+
+// Revenue Chart Functions
+function getLast12Months(): { key: string; label: string }[] {
+  const result: { key: string; label: string }[] = [];
+  const now = new Date();
+
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth(); // 0-11
+    const key = `${year}-${String(month + 1).padStart(2, "0")}`; // e.g. "2025-03"
+    const label = d.toLocaleString("en-US", { month: "short" }); // "Jan"
+    result.push({ key, label });
+  }
+
+  return result;
+}
+
+export async function fetchRevenue(userId: number): Promise<Revenue[]> {
+  const res = await api.get<Transaction[]>(`/users/${userId}/transactions`);
+  const transactions = res.data ?? [];
+
+  const months = getLast12Months();
+  const bucket: Record<string, number> = {};
+  for (const m of months) {
+    bucket[m.key] = 0;
+  }
+
+  for (const tx of transactions) {
+    if (!tx.sale_date || tx.total == null) continue;
+
+    const d = new Date(tx.sale_date);
+    if (Number.isNaN(d.getTime())) continue;
+
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0",
+    )}`;
+
+    if (key in bucket) {
+      bucket[key] += tx.total;
+    }
+  }
+
+  const revenue: Revenue[] = months.map((m) => ({
+    month: m.label,
+    revenue: bucket[m.key] ?? 0,
+  }));
+
+  return revenue;
 }

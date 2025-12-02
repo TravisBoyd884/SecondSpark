@@ -1,47 +1,47 @@
-// import { generateYAxis } from "@/app/lib/utils";
 import { CalendarIcon } from "@heroicons/react/24/outline";
-import { Revenue } from "@/app/lib/definitions";
+import { fetchRevenue } from "@/app/lib/data";
 
-// This component is representational only.
-// For data visualization UI, check out:
-// https://www.tremor.so/
-// https://www.chartjs.org/
-// https://airbnb.io/visx/
+function formatCurrency(amount: number) {
+  return amount.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+}
 
 export default async function RevenueChart() {
-  // Make component async, remove the props
-  // const revenue = await fetchRevenue(); // Fetch data inside the component
+  const userId = 1; // TODO: replace with real logged-in user
+  const revenue = await fetchRevenue(userId);
   const chartHeight = 350;
-  // NOTE: Uncomment this code in Chapter 7
 
-  // const { yAxisLabels, topLabel } = generateYAxis(revenue);
-  const yAxisLabels = ["$500", "$400", "$300", "$200", "$100", "$0"];
-  const revenue = [
-    { month: "Jan", revenue: 312 },
-    { month: "Feb", revenue: 147 },
-    { month: "Mar", revenue: 289 },
-    { month: "Apr", revenue: 421 },
-    { month: "May", revenue: 198 },
-    { month: "Jun", revenue: 364 },
-    { month: "Jul", revenue: 256 },
-    { month: "Aug", revenue: 473 },
-    { month: "Sep", revenue: 133 },
-    { month: "Oct", revenue: 387 },
-    { month: "Nov", revenue: 242 },
-    { month: "Dec", revenue: 468 },
-  ];
+  if (!revenue || revenue.length === 0) {
+    return (
+      <div className="w-full md:col-span-4">
+        <h2 className="mb-4 text-xl md:text-2xl">Recent Revenue</h2>
+        <div className="rounded-xl bg-gray-50 p-4">
+          <div className="rounded-md bg-white p-6 text-sm text-gray-400">
+            No revenue data available.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // if (!revenue || revenue.length === 0) {
-  //   return <p className="mt-4 text-gray-400">No data available.</p>;
-  // }
+  const maxRevenue = Math.max(...revenue.map((r) => r.revenue), 0);
+  const safeMax = maxRevenue || 100; // avoid divide-by-zero
+  const step = safeMax / 5;
+
+  const yAxisLabels = Array.from({ length: 6 }, (_, i) =>
+    formatCurrency(step * (5 - i)),
+  );
 
   return (
     <div className="w-full md:col-span-4">
-      <h2 className={` mb-4 text-xl md:text-2xl`}>Recent Revenue</h2>
-      {/* NOTE: Uncomment this code in Chapter 7 */}
+      <h2 className="mb-4 text-xl md:text-2xl">Recent Revenue</h2>
 
       <div className="rounded-xl bg-gray-50 p-4">
         <div className="sm:grid-cols-13 mt-0 grid grid-cols-12 items-end gap-2 rounded-md bg-white p-4 md:gap-4">
+          {/* Y-axis labels */}
           <div
             className="mb-6 hidden flex-col justify-between text-sm text-gray-400 sm:flex"
             style={{ height: `${chartHeight}px` }}
@@ -51,12 +51,13 @@ export default async function RevenueChart() {
             ))}
           </div>
 
+          {/* Bars */}
           {revenue.map((month) => (
             <div key={month.month} className="flex flex-col items-center gap-2">
               <div
                 className="w-full rounded-md bg-blue-300"
                 style={{
-                  height: `${(chartHeight / 486) * month.revenue}px`,
+                  height: `${(chartHeight * month.revenue) / safeMax}px`,
                 }}
               ></div>
               <p className="-rotate-90 text-sm text-gray-400 sm:rotate-0">
@@ -67,7 +68,7 @@ export default async function RevenueChart() {
         </div>
         <div className="flex items-center pb-2 pt-6">
           <CalendarIcon className="h-5 w-5 text-gray-500" />
-          <h3 className="ml-2 text-sm text-gray-500 ">Last 12 months</h3>
+          <h3 className="ml-2 text-sm text-gray-500">Last 12 months</h3>
         </div>
       </div>
     </div>

@@ -1,159 +1,167 @@
 "use client";
 
-import { CustomerField, InvoiceForm } from "@/app/lib/definitions";
-import {
-  CheckIcon,
-  ClockIcon,
-  CurrencyDollarIcon,
-  UserCircleIcon,
-} from "@heroicons/react/24/outline";
+import { CalendarIcon, CurrencyDollarIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { Button } from "@/app/ui/button";
-// import { updateInvoice, State } from "@/app/lib/actions";
-import { useActionState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { updateTransaction } from "@/app/lib/data";
 
-export default function EditInvoiceForm(
-  {
-    // invoice,
-    // customers,
-  }: {
-    // invoice: InvoiceForm;
-    // customers: CustomerField[];
-  },
-) {
-  // const initialState: State = { message: null, errors: {} };
-  // const updateInvoiceWithId = updateInvoice.bind(null, invoice.id);
-  // const [state, formAction] = useActionState(updateInvoiceWithId, initialState);
-  //
-  const invoice = {
-    customer_id: "inv_01f9a7c2",
-    amount: 243.18,
-    date: "2024-11-12",
-    status: "paid",
-    name: "Jordan Lee",
-    email: "jordan.lee@gmail.com",
-    image_url: "https://randomuser.me/api/portraits/men/12.jpg",
+export default function EditInvoiceForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const transactionId = searchParams.get("id"); // from ?id=...
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Placeholder defaults; later you can pass real transaction data as props
+  const transaction = {
+    sale_date: "2024-11-12",
+    total: 243.18,
+    tax: 10.0,
+    seller_comission: 5.0,
   };
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+
+    if (!transactionId) {
+      setError("Missing transaction id in URL.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+
+    const saleDate = formData.get("sale_date") as string | null;
+    const total = formData.get("total") as string | null;
+    const tax = formData.get("tax") as string | null;
+    const sellerCommission = formData.get("seller_comission") as string | null;
+
+    if (!saleDate || !total || !tax || !sellerCommission) {
+      setError("Please fill out all fields.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const totalValue = parseFloat(total);
+    const taxValue = parseFloat(tax);
+    const commissionValue = parseFloat(sellerCommission);
+
+    if ([totalValue, taxValue, commissionValue].some(Number.isNaN)) {
+      setError("Total, tax, and commission must be valid numbers.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      await updateTransaction(Number(transactionId), {
+        sale_date: saleDate,
+        total: totalValue,
+        tax: taxValue,
+        reseller_comission: commissionValue,
+        // reseller_id: optional — backend will keep existing seller_id
+      });
+
+      router.push("/dashboard/transactions");
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update transaction.");
+      setIsSubmitting(false);
+    }
+  }
+
   return (
-    <form action={""}>
+    <form onSubmit={handleSubmit}>
       <div className="rounded-md bg-gray-50 p-4 md:p-6">
-        {/* Customer Name */}
+        {/* Sale Date */}
         <div className="mb-4">
-          <label htmlFor="customer" className="mb-2 block text-sm font-medium">
-            Choose customer
+          <label htmlFor="sale_date" className="mb-2 block text-sm font-medium">
+            Sale Date
           </label>
           <div className="relative">
-            <select
-              id="customer"
-              name="customerId"
-              className="peer block w-full cursor-pointer rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-              defaultValue={invoice.name}
-              aria-describedby="customer-error"
-            >
-              <option value="" disabled>
-                Select a customer
-              </option>
-              {/* {customers.map((customer) => ( */}
-              {/*   <option key={customer.id} value={customer.id}> */}
-              {/*     {customer.name} */}
-              {/*   </option> */}
-              {/* ))} */}
-            </select>
-            <UserCircleIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
-          </div>
-          <div id="customer-error">
-            {/* {state.errors?.customerId && */}
-            {/*   state.errors?.customerId?.map((error: string) => ( */}
-            {/*     <p className="mt-2 text-sm text-red-500" key={error}> */}
-            {/*       {error} */}
-            {/*     </p> */}
-            {/*   ))} */}
+            <input
+              id="sale_date"
+              name="sale_date"
+              type="date"
+              defaultValue={transaction.sale_date}
+              className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm"
+            />
+            <CalendarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
           </div>
         </div>
 
-        {/* Invoice Amount */}
+        {/* Total Amount */}
         <div className="mb-4">
-          <label htmlFor="amount" className="mb-2 block text-sm font-medium">
-            Choose an amount
+          <label htmlFor="total" className="mb-2 block text-sm font-medium">
+            Total Amount
           </label>
-          <div className="relative mt-2 rounded-md">
-            <div className="relative">
-              <input
-                id="amount"
-                name="amount"
-                type="number"
-                step="0.01"
-                defaultValue={invoice.amount}
-                placeholder="Enter USD amount"
-                className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm outline-2 placeholder:text-gray-500"
-                aria-describedby="amount-error"
-              />
-              <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500 peer-focus:text-gray-900" />
-            </div>
-          </div>
-          <div id="amount-error">
-            {/* {state.errors?.amount && */}
-            {/*   state.errors.amount.map((error: string) => ( */}
-            {/*     <p className="mt-2 text-sm text-red-500" key={error}> */}
-            {/*       {error} */}
-            {/*     </p> */}
-            {/*   ))} */}
+          <div className="relative">
+            <input
+              id="total"
+              name="total"
+              type="number"
+              step="0.01"
+              defaultValue={transaction.total}
+              placeholder="Enter total amount"
+              className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm"
+            />
+            <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
           </div>
         </div>
 
-        {/* Invoice Status */}
-        <fieldset>
-          <legend className="mb-2 block text-sm font-medium">
-            Set the transaction status
-          </legend>
-          <div className="rounded-md border border-gray-200 bg-white px-[14px] py-3">
-            <div className="flex gap-4">
-              <div className="flex items-center">
-                <input
-                  id="pending"
-                  name="status"
-                  type="radio"
-                  value="pending"
-                  defaultChecked={invoice.status === "pending"}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  aria-describedby="status-error"
-                />
-                <label
-                  htmlFor="pending"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-medium text-gray-600"
-                >
-                  Pending <ClockIcon className="h-4 w-4" />
-                </label>
-              </div>
-              <div className="flex items-center">
-                <input
-                  id="paid"
-                  name="status"
-                  type="radio"
-                  value="paid"
-                  defaultChecked={invoice.status === "paid"}
-                  className="h-4 w-4 cursor-pointer border-gray-300 bg-gray-100 text-gray-600 focus:ring-2"
-                  aria-describedby="status-error"
-                />
-                <label
-                  htmlFor="paid"
-                  className="ml-2 flex cursor-pointer items-center gap-1.5 rounded-full bg-green-500 px-3 py-1.5 text-xs font-medium text-white"
-                >
-                  Paid <CheckIcon className="h-4 w-4" />
-                </label>
-              </div>
-            </div>
+        {/* Tax */}
+        <div className="mb-4">
+          <label htmlFor="tax" className="mb-2 block text-sm font-medium">
+            Total Tax
+          </label>
+          <div className="relative">
+            <input
+              id="tax"
+              name="tax"
+              type="number"
+              step="0.01"
+              defaultValue={transaction.tax}
+              placeholder="Enter tax amount"
+              className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm"
+            />
+            <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
           </div>
-          <div id="status-error">
-            {/* {state.errors?.status && */}
-            {/*   state.errors.status.map((error: string) => ( */}
-            {/*     <p className="mt-2 text-sm text-red-500" key={error}> */}
-            {/*       {error} */}
-            {/*     </p> */}
-            {/*   ))} */}
+        </div>
+
+        {/* Seller Commission */}
+        <div className="mb-4">
+          <label
+            htmlFor="seller_comission"
+            className="mb-2 block text-sm font-medium"
+          >
+            Seller Commission
+          </label>
+          <div className="relative">
+            <input
+              id="seller_comission"
+              name="seller_comission"
+              type="number"
+              step="0.01"
+              defaultValue={transaction.seller_comission}
+              placeholder="Enter commission amount"
+              className="peer block w-full rounded-md border border-gray-200 py-2 pl-10 text-sm"
+            />
+            <CurrencyDollarIcon className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-gray-500" />
           </div>
-        </fieldset>
+        </div>
+
+        {error && (
+          <p className="mt-4 text-sm text-red-500" aria-live="polite">
+            {error}
+          </p>
+        )}
       </div>
+
       <div className="mt-6 flex justify-end gap-4">
         <Link
           href="/dashboard/transactions"
@@ -161,7 +169,9 @@ export default function EditInvoiceForm(
         >
           Cancel
         </Link>
-        <Button type="submit">Edit Transaction</Button>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Saving..." : "Edit Transaction"}
+        </Button>
       </div>
     </form>
   );
