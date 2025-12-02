@@ -2,20 +2,27 @@
 // It describes the shape of the data, and what data type each property should accept.
 // For simplicity of teaching, we're manually defining these types.
 // However, these types are generated automatically if you're using an ORM such as Prisma.
-export type User = {
-  user_id: string;
+export interface Organization {
+  organization_id: number;
+  name: string;
+}
+
+export interface User {
+  user_id: number;
   username: string;
   email: string;
-  password: string;
-  organization_id: string;
-  securityQuestion: string;
-  organization_role: "Admin" | "Member";
-};
 
-export type Organization = {
-  organization_id: string;
-  name: string;
-};
+  // Foreign keys / relationships
+  organization_id: number | null;
+  organization_role: string | null;
+
+  // Marketplace accounts (can be null if not linked)
+  ebay_account_id?: number | null;
+  etsy_account_id?: number | null;
+
+  // Frontend-only / form-only field (not returned by backend)
+  password?: string;
+}
 
 export type Item = {
   item_id: string;

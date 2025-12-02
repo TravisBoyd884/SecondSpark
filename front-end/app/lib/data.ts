@@ -10,11 +10,66 @@ import {
   AppUser,
   ItemStat,
   Revenue,
+  Organization,
+  User,
 } from "./definitions";
 
 export const api = axios.create({
   baseURL: "http://127.0.0.1:5000", // Flask default
 });
+
+export async function fetchFirstOrganization(): Promise<Organization | null> {
+  const res = await api.get<Organization[] | Organization>("/organizations");
+  const data = res.data;
+
+  if (Array.isArray(data)) {
+    return data[0] ?? null;
+  }
+  return data ?? null;
+}
+
+// Get organization by id (if you ever want it directly)
+export async function fetchOrganizationById(
+  organizationId: number,
+): Promise<Organization | null> {
+  const res = await api.get<Organization>(`/organizations/${organizationId}`);
+  return res.data ?? null;
+}
+
+// Get all users belonging to an organization
+export async function fetchOrganizationUsers(
+  organizationId: number,
+): Promise<User[]> {
+  const res = await api.get<User[]>(`/organizations/${organizationId}/users`);
+  return res.data ?? [];
+}
+
+// Update organization name
+export async function updateOrganizationApi(
+  organizationId: number,
+  payload: { name: string },
+): Promise<Organization> {
+  const res = await api.put<Organization>(
+    `/organizations/${organizationId}`,
+    payload,
+  );
+  return res.data;
+}
+
+// ❗ These assume you’ll have corresponding backend routes:
+//   PUT /users/<id> and DELETE /users/<id>
+
+export async function deleteUserApi(userId: number): Promise<void> {
+  await api.delete(`/users/${userId}`);
+}
+
+export async function updateUserApi(
+  userId: number,
+  payload: Partial<User>,
+): Promise<User> {
+  const res = await api.put<User>(`/users/${userId}`, payload);
+  return res.data;
+}
 
 export async function fetchLatestTransactions(userId: number) {
   const res = await api.get<Transaction[]>(`/users/${userId}/transactions`);
