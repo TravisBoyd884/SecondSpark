@@ -20,10 +20,15 @@ class APIRoutes:
             self.ebay = EbayInterface()
         except EbayAPIError as e:
             print(f"[Err] Unable to initialize Ebay Interface \n Err: {e}")
+        except Exception as e:
+            print(f"[Err] Exception occured on eBay interface\n Err: {e}")
         try:
             self.etsy = EtsyInterface()
         except EtsyAPIError as e:
             print(f"[Err] Unable to initialize Etsy Interface \n Err: {e}")
+        except Exception as e:
+            print(f"[Err] Exception occured on Etsy interface\n Err: {e}")
+
 
         # WARNING: MARKETPLACE CREDENTIALS REFACTORING
         # The logic below for fetching global credentials has been removed 
@@ -108,8 +113,8 @@ class APIRoutes:
             "sale_date": row.get("sale_date").isoformat() if row.get("sale_date") else None,
             "total": APIRoutes._safe_money_to_float(row.get("total")),
             "tax": APIRoutes._safe_money_to_float(row.get("tax")),
-            "reseller_comission": APIRoutes._safe_money_to_float(row.get("seller_comission")),
-            "reseller_id": row.get("seller_id"),
+            "seller_comission": APIRoutes._safe_money_to_float(row.get("seller_comission")),
+            "seller_id": row.get("seller_id"),
         }
 
     # ------------------------------------------------------------------
@@ -176,7 +181,7 @@ class APIRoutes:
                 return jsonify({"error": f"Organization with ID {organization_id} not found"}), 404
 
             # Perform the creation
-            success = self.db.create_user(
+            success = self.db.create_app_user(
                 username, password, email, organization_id, organization_role
             )
             
@@ -323,6 +328,27 @@ class APIRoutes:
         # ----------------------------
         # Organizations
         # ----------------------------
+
+        @api.route("/organizations/<int:organization_id>/users", methods=["GET"])
+        def get_organization_users(organization_id):
+            """
+            Retrieves all AppUser records belonging to a specific organization ID.
+            """
+            # 1. Check if the organization exists for a clean 404 response
+            org_row = self.db.get_organization_by_id(organization_id)
+            if not org_row:
+                return jsonify({"error": f"Organization {organization_id} not found"}), 404
+
+            # 2. Fetch all users for that organization
+            rows = self.db.get_app_users_by_organization_id(organization_id)
+            
+            if not rows:
+                # Organization exists but has no users (returns an empty list)
+                return jsonify([]), 200 
+
+            # 3. Clean and return the list of user dictionaries (removes password)
+            users = [self._user_row_to_dict(row) for row in rows]
+            return jsonify(users), 200
 
         @api.route("/organizations", methods=["GET"])
         def get_organizations():
@@ -561,22 +587,23 @@ class APIRoutes:
                 # Should not happen if FKs are correct, but good for robustness
                 return jsonify({"error": f"eBay account with ID {ebay_account_id} not found"}), 404
 
-            # NOTE: We return the row directly as it is a dictionary and does not contain 
+            # NOTE: We return the row directly as it is a dictionary and does not contain
             # highly sensitive, non-API-related fields like 'password'.
             return jsonify(ebay_row), 200
 
         @api.route("/users/<int:user_id>/ebay_items", methods=["GET"])
         def get_ebay_items_for_user(user_id):
             """
-            Retrieves all EbayItem records directly from the database that are 
+            Retrieves all EbayItem records directly from the database that are
             linked to the user's Ebay account via the AppUser and Ebay tables.
             """
             # 1. Fetch items using the new DB interface function
             rows = self.db.get_ebay_items_by_user_id(user_id)
-            
+
             if rows is None:
                 # Handles potential SQL errors, e.g., if the 'EbayItem' table doesn't exist
-                return jsonify({"error": f"Failed to fetch eBay items for user {user_id} due to a database issue."}), 500
+                return jsonify(
+                    {"error": f"Failed to fetch eBay items for user {user_id} due to a database issue."}), 500
 
             if not rows:
                 # Check if the user exists/is linked to an account to provide a more accurate error message
@@ -584,10 +611,109 @@ class APIRoutes:
                 if not user_row:
                     return jsonify({"error": f"User {user_id} not found"}), 404
                 if not user_row.get("ebay_account_id"):
-                     return jsonify({"error": f"User {user_id} does not have an eBay account linked"}), 404
-                
+                    return jsonify({"error": f"User {user_id} does not have an eBay account linked"}), 404
+
                 # User and account exist but no items found in the database
                 return jsonify([]), 200
 
             # 2. Return the list of dictionaries (from RealDictCursor)
             return jsonify(rows), 200
+
+        @api.route("/ebay/inventory/<string:sku>", methods=["GET"])
+        def ebay_get_inventory_item(sku):
+            """
+            Directly fetch a single eBay inventory item by SKU using the EbayInterface.
+            This does NOT touch the local Item table; it's a thin proxy to eBay.
+
+            Response:
+              200: JSON payload from eBay (via EbayInterface._request)
+              502: Error talking to eBay
+              503: eBay integration not configured
+            """
+            if not getattr(self, "ebay", None):
+                return jsonify({"error": "eBay integration not configured"}), 503
+
+            try:
+                # Assuming EbayInterface._request(path=...) talks to the Sell Inventory API
+                data = self.ebay._request("GET", f"/inventory_item/{sku}")
+                return jsonify(data), 200
+            except EbayAPIError as e:
+                return jsonify({"error": str(e)}), 502
+
+        @api.route("/ebay/inventory/<string:sku>", methods=["POST", "PUT"])
+        def ebay_upsert_inventory_item(sku):
+            """
+            Create or update an eBay inventory item for the given SKU.
+
+            Expected JSON body (example):
+            {
+              "title": "My Item",
+              "description": "Some description",
+              "category": "Electronics",
+              "quantity": 5,
+              "price": 19.99
+            }
+
+            This builds an item_dict compatible with EbayInterface.sync_item_create_or_update.
+            """
+            if not getattr(self, "ebay", None):
+                return jsonify({"error": "eBay integration not configured"}), 503
+
+            data = request.get_json(force=True) or {}
+
+            # Build the generic item_dict we’ve been using everywhere for marketplace sync
+            item_dict = {
+                "item_id": data.get("item_id"),  # optional, for local reference
+                "sku": sku,
+                "title": data.get("title", ""),
+                "description": data.get("description", ""),
+                "category": data.get("category", ""),
+                "quantity": data.get("quantity", 0),
+                "price": str(data.get("price", "0.00")),
+            }
+
+            try:
+                ebay_result = self.ebay.sync_item_create_or_update(item_dict)
+                return jsonify(
+                    {
+                        "message": "eBay inventory item upserted",
+                        "sku": sku,
+                        "ebay_response": ebay_result,
+                    }
+                ), 200
+            except EbayAPIError as e:
+                return jsonify(
+                    {
+                        "error": f"Failed to upsert eBay inventory item for SKU {sku}",
+                        "details": str(e),
+                    }
+                ), 502
+
+        @api.route("/ebay/inventory/<string:sku>", methods=["DELETE"])
+        def ebay_delete_inventory_item(sku):
+            """
+            Delete an eBay inventory item by SKU.
+
+            This delegates to EbayInterface.sync_item_delete and does not
+            remove anything from the local Item table.
+            """
+            if not getattr(self, "ebay", None):
+                return jsonify({"error": "eBay integration not configured"}), 503
+
+            try:
+                # Our sync_item_delete helper expects a dict with at least 'sku'
+                self.ebay.sync_item_delete({"sku": sku})
+                return jsonify(
+                    {
+                        "message": f"eBay inventory item with SKU {sku} deleted",
+                        "ebay_sync": "ok",
+                    }
+                ), 200
+            except EbayAPIError as e:
+                return jsonify(
+                    {
+                        "error": f"Failed to delete eBay inventory item with SKU {sku}",
+                        "details": str(e),
+                        "ebay_sync": "failed",
+                    }
+                ), 502

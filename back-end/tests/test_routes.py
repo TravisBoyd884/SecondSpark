@@ -101,10 +101,132 @@ def test_auth():
     run_test("POST Login (Failure)", 'POST', f"{BASE_URL}/login", 
              data={"username": "alice", "password": "wrong_password"}, expected_status=401)
 
+def test_register_user():
+    """Tests the /api/register route functionality."""
+    
+    # --- Test 1: Successful Registration ---
+    # Use random numbers to ensure unique username and email for each test run
+    unique_id = random.randint(10000, 99999) 
+    new_user_data = {
+        "username": f"test_reg_user_{unique_id}",
+        "password": "testpassword123",
+        "email": f"test.reg.user.{unique_id}@example.com",
+        "organization_id": TEST_DATA["EXISTING_ORG_ID"], # Assuming 1 is a valid ID from schema
+    }
+
+    result = run_test(
+        "Register New User - SUCCESS",
+        'POST',
+        f"{BASE_URL}/register",
+        data=new_user_data,
+        expected_status=201
+    )
+    
+    if result and "user_id" in result:
+        print(f"[INFO] Successfully created user with ID: {result['user_id']}")
+        # Note: If you add user cleanup to test_cleanup(), you would save the ID here.
+        
+    # --- Test 2: Missing Required Fields (Missing password) ---
+    missing_fields_data = {
+        "username": "fail_no_pass",
+        "email": "fail@example.com",
+        "organization_id": TEST_DATA["EXISTING_ORG_ID"],
+    }
+    run_test(
+        "Register User - FAIL (Missing password)",
+        'POST',
+        f"{BASE_URL}/register",
+        data=missing_fields_data,
+        expected_status=400
+    )
+
+    # --- Test 3: Non-existent Organization ---
+    nonexistent_org_data = {
+        "username": "fail_no_org",
+        "password": "p",
+        "email": "fail_org@example.com",
+        "organization_id": 99999,
+    }
+    run_test(
+        "Register User - FAIL (Non-existent Organization ID)",
+        'POST',
+        f"{BASE_URL}/register",
+        data=nonexistent_org_data,
+        expected_status=404
+    )
+    
+    # --- Test 4: Duplicate Registration ---
+    # Use the same data as the successful test (Test 1). 
+    # Since the user was created, the second attempt should fail the unique constraint check.
+    if result and "user_id" in result:
+        run_test(
+            "Register User - FAIL (Duplicate username/email)",
+            'POST',
+            f"{BASE_URL}/register",
+            data=new_user_data,
+            expected_status=500 # Route logic returns 500 on DB unique constraint failure
+        )
 
 # ======================================================================
 # 2. ORGANIZATION CRUD TESTS
 # ======================================================================
+
+def test_organization_users_fetch():
+    """Tests the /api/organizations/<id>/users route functionality."""
+    
+    # --- Test 1: Successful Fetch for Organization 1 ---
+    org_id = TEST_DATA["EXISTING_ORG_ID"] # Assuming Org 1 has multiple users (alice, bob, carol, dave, eve, etc.)
+    
+    result = run_test(
+        f"Fetch Users for Existing Organization {org_id}",
+        'GET',
+        f"{BASE_URL}/organizations/{org_id}/users",
+        expected_status=200
+    )
+    
+    if result is not None:
+        print(f"[INFO] Fetched {len(result)} users for Organization {org_id}.")
+        
+        # ASSERT 1: Check if we got a list and it has a reasonable size (at least 5 users are in the default schema)
+        assert isinstance(result, list), "Result should be a list of users"
+        assert len(result) >= 1, f"Expected at least 1 users in Org {org_id}, got {len(result)}"
+
+        # ASSERT 2: Check the structure of the first user object
+        first_user = result[0]
+        assert "password" not in first_user, "User response should NOT contain the password field"
+        assert "user_id" in first_user and isinstance(first_user["user_id"], int), "User object missing 'user_id'"
+        assert first_user["organization_id"] == org_id, "User organization ID is incorrect"
+
+    # --- Test 2: Fetch for a Non-Existent Organization ---
+    non_existent_org_id = 99999
+    run_test(
+        f"Fetch Users for Non-Existent Organization {non_existent_org_id}",
+        'GET',
+        f"{BASE_URL}/organizations/{non_existent_org_id}/users",
+        expected_status=404 # Should fail with a 404 since the organization is not found
+    )
+    
+    # --- Test 3: Fetch for an Existing Organization with (Assumed) No Users ---
+    # Assuming 'Gamma Trading Co.' (Org 3) exists but may have no users linked after cleanup/reset. 
+    # Use the max existing ID + 1 if you cannot reliably get Org ID 3's value
+    # Let's assume you've populated your DB with an org that has 0 users for a robust test.
+    # For simplicity, we'll assume the Organization ID 2 (Beta Resale Group) has a predictable number of users from the new schema.
+    
+    org_id_with_users = org_id + 1 # Assuming Org 2 is the next in sequence
+    result_org_2 = run_test(
+        f"Fetch Users for Organization {org_id_with_users}",
+        'GET',
+        f"{BASE_URL}/organizations/{org_id_with_users}/users",
+        expected_status=200
+    )
+    
+    if result_org_2 is not None:
+        # Based on the sample data provided previously (frank, grace, henry), Org 2 (Beta) has 2 users (frank, grace)
+        # and Org 3 (Gamma) has 1 user (henry)
+        # Let's verify Org 2 has exactly 2 users
+        expected_user_count = 1 # Based on the last generated data for Org 'Beta Resale Group'
+        assert isinstance(result_org_2, list), "Result for Org 2 should be a list"
+        assert len(result_org_2) == expected_user_count, f"Expected {expected_user_count} users in Org {org_id_with_users}, got {len(result_org_2)}"
 
 def test_organization_crud():
     print("\n\n#####################################################")
@@ -331,7 +453,9 @@ if __name__ == "__main__":
     test_organization_crud()
     test_item_crud_and_fetch()
     test_transaction_crud_and_fetch()
+    test_organization_users_fetch()
     test_transaction_item_link()
+    test_register_user()
     
     # Optional: Run cleanup to remove test data
     # test_cleanup() 

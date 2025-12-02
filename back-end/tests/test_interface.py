@@ -41,9 +41,9 @@ from unittest.mock import MagicMock
 
 # Make sure your PYTHONPATH is set so that 'utils' is importable from backend root,
 # e.g. run from 'back-end/' with:  python -m unittest tests.test_marketplaces_unit
-
-from utils.ebay_interface import EbayInterface, EbayAPIError
-from utils.etsy_interface import EtsyInterface, EtsyAPIError
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'utils')))
+from ebay_interface import EbayInterface, EbayAPIError
+from etsy_interface import EtsyInterface, EtsyAPIError
 
 
 class TestEbayInterface(unittest.TestCase):

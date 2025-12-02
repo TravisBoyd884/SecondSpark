@@ -17,17 +17,22 @@ class EtsyAPIError(Exception):
 class EtsyInterface:
     def __init__(self):
         # load environment variables from '.env' file
-        if (os.path.exists(".env")):
-            load_dotenv(dotenv_path=".env")
-            self.client_id = os.getenv("ETSY_CLIENT_ID")
-            self.client_secret = os.getenv("ETSY_CLIENT_SECRET")
-            # Get environment type for the Ebay api (sandbox or production)
-            self.env = os.getenv("ETSY_ENV").lower()
-            try:
+        if (os.path.exists("utils/.env")):
+            load_dotenv(dotenv_path="utils/.env")
+
+            if 'ETSY_CLIENT_ID' in os.environ and 'ETSY_CLIENT_SECRET' in os.environ:
+                self.client_id = os.getenv("ETSY_CLIENT_ID")
+                self.client_secret = os.getenv("ETSY_CLIENT_SECRET")
+                # Get environment type for the Ebay api (sandbox or production)
+                self.env = os.getenv("ETSY_ENV").lower()
+            else:
+                raise Exception("[NOTICE] Etsy credentials not found!")
+
+            if 'ETSY_SHOP_ID' in os.environ and 'ETSY_ACCESS_TOKEN' in os.environ:
                 self.shop_id = os.getenv("ETSY_SHOP_ID")
                 self.access_token = os.getenv("ETSY_ACCESS_TOKEN")
-            except:
-                print(f"[NOTICE] Etsy shop id and access token not provided")
+            else:
+                print("[NOTICE] Etsy shop id and access token not provided")
         else:
             raise EtsyAPIError("Unable to locate/read .env file.")
 

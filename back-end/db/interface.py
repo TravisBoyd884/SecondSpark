@@ -194,6 +194,23 @@ class DBInterface:
         sql = "DELETE FROM Organization WHERE organization_id = %s;"
         return self._execute_dml(sql, (organization_id,))
 
+    def get_app_users_by_organization_id(self, organization_id: int):
+        """
+        Retrieves all AppUser records belonging to the specified organization ID.
+        """
+        sql = """
+            SELECT 
+                user_id, username, email, organization_id, organization_role, 
+                ebay_account_id, etsy_account_id
+            FROM 
+                AppUser
+            WHERE 
+                organization_id = %s
+            ORDER BY
+                username ASC;
+        """
+        return self.execute_query(sql, params=(organization_id,), fetch_all=True)
+
     # =======================================================================================
     # AppUser CRUD
     # =======================================================================================
