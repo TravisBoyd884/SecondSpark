@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "axios": "^1.13.2",
     "clsx": "^2.1.1",
+    "debounce": "^3.0.0",
     "next": "16.0.1",
     "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "react-dom": "19.2.0",
+    "use-debounce": "^10.0.6"
   },
   "devDependencies": {
     "@tailwindcss/forms": "^0.5.10",

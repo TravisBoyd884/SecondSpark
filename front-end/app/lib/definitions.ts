@@ -23,6 +23,7 @@ export type Item = {
   description: string;
   category: string;
   list_date: string;
+  price: number;
   isOnEtsy: boolean;
   isOnEbay: boolean;
   creator_id: string;
@@ -34,12 +35,63 @@ export type Reseller = {
 };
 
 export type Transaction = {
-  transaction_id: string;
+  transaction_id: number;
   sale_date: string;
   total: number;
   tax: number;
-  reseller_commission: number;
-  reseller_id: string;
+  seller_comission: number;
+};
+
+export type CreateTransactionPayload = {
+  sale_date: string;
+  total: number;
+  tax?: number;
+  reseller_comission?: number;
+  reseller_id: number;
+  status?: string; // optional – backend can ignore if not used
+};
+
+export type UpdateTransactionPayload = Partial<{
+  sale_date: string;
+  total: number;
+  tax: number;
+  reseller_comission: number;
+  reseller_id: number;
+}>;
+
+export type ItemStat = {
+  item_id: number;
+  name: string;
+};
+
+export type AppUser = {
+  user_id: number;
+  username: string;
+  email: string;
+  organization_id: number | null;
+  organization_role: string | null;
+};
+
+export type LoginPayload = {
+  username: string;
+  password: string;
+};
+
+export type LoginResponse = {
+  message: string;
+  user: AppUser;
+};
+
+export type RegisterPayload = {
+  username: string;
+  password: string;
+  email: string;
+  organization_id: number;
+};
+
+export type RegisterResponse = {
+  message: string;
+  user_id: number;
 };
 
 export type Transaction_Item = {
