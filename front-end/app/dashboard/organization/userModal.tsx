@@ -13,7 +13,6 @@ interface UserModalProps {
 export default function UserModal({ show, onHide, user, onSave }: UserModalProps) {
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
     const [organizationId, setOrganizationId] = useState('');
     const [securityQuestion, setSecurityQuestion] = useState('');
     const [organizationRole, setOrganizationRole] = useState<'Admin' | 'Member'>('Member');
@@ -22,7 +21,6 @@ export default function UserModal({ show, onHide, user, onSave }: UserModalProps
         if (user) {
             setUsername(user.username || '');
             setEmail(user.email || '');
-            setPassword(user.password || '');
             setOrganizationId(user.organization_id || '');
             setSecurityQuestion(user.securityQuestion || '');
             setOrganizationRole(user.organization_role || 'Member');
@@ -54,16 +52,6 @@ export default function UserModal({ show, onHide, user, onSave }: UserModalProps
                             className="border border-gray-300 rounded-md px-3 py-2"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                        />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                        <label htmlFor="password" className="font-semibold">Password</label>
-                        <input
-                            id="password"
-                            type="password"
-                            className="border border-gray-300 rounded-md px-3 py-2"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
                     <div className="flex flex-col gap-2">
@@ -111,7 +99,6 @@ export default function UserModal({ show, onHide, user, onSave }: UserModalProps
                         onClick={() => onSave({
                             username,
                             email,
-                            password,
                             organization_id: organizationId,
                             securityQuestion,
                             organization_role: organizationRole,
