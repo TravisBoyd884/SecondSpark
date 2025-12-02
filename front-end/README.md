@@ -1,10 +1,10 @@
 # Docker Instructions
 
 ### Building front-end docker image:
-- `docker build -t front-end`
+- `docker build -t front-end .`
 
 ### Running the front-end docker container:
-- `docker run -p 3000:3000 front-end .`
+- `docker run -p 3000:3000 front-end`
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 

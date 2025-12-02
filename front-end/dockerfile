@@ -1,53 +1,34 @@
-# -------------------------
-# 1️⃣  BUILD STAGE
-# -------------------------
-# Build app in clean Node environment (builder is alias name)
-FROM node:20 AS builder
+# -----------------------------------------------------------
+# DEVELOPMENT STAGE
+# This single stage is optimized for live development.
+# -----------------------------------------------------------
+FROM node:20-alpine AS development
 
-# Enable Corepack(tool to manage package managers) to use pnpm (ships with Node 20+)
-RUN corepack enable && corepack prepare pnpm@10.18.1 --activate
+# Install compatibility library 'libc6-compat' for Node and enable pnpm
+RUN apk add --no-cache libc6-compat && corepack enable && corepack prepare pnpm@10.18.1 --activate
+
+# Set environment variable to indicate development mode
+ENV NODE_ENV=development
 
 # Working directory inside of docker container
 WORKDIR /app
 
 # Copy lockfile and manifest first for efficient caching
-# These files specify project dependencies
 COPY pnpm-lock.yaml package.json ./
 
-# Install dependencies
-# 'frozen lockfile' options tells pnpm to adhere to specific versions listed in lock file.
-RUN pnpm install --frozen-lockfile
+# Install all dependencies (dev and prod). 
+# We remove the --frozen-lockfile flag so developers can add dependencies easily.
+RUN pnpm install
 
-# Copy rest of the app
+# Copy all application source code
+# Note: When running, you should use Docker volume mounting (-v) 
+# to sync files from your host machine into this container.
 COPY . .
 
-# Build the Next.js app
-RUN pnpm run build
-
-# -------------------------
-# 2️⃣  RUNTIME STAGE
-# -------------------------
-# Create smaller environment image aliased to 'runner'
-FROM node:20-alpine AS runner
-
-# Enable Corepack and pnpm
-# Install compatibility library 'libc6-compat' for Node
-RUN apk add --no-cache libc6-compat && corepack enable && corepack prepare pnpm@10.18.1 --activate
-
-WORKDIR /app
-ENV NODE_ENV=production
-
-# Copy only the essential files from the builder
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/pnpm-lock.yaml ./pnpm-lock.yaml
-
-# Install only production dependencies
-RUN pnpm install --frozen-lockfile --prod
-
+# Expose the port Next.js development server runs on (default is 3000)
 EXPOSE 3000
 
-# Default command: start Next.js in production mode
-CMD ["pnpm", "start"]
-
+# *** IMPORTANT: Start the Next.js development server ***
+# This command enables hot-reloading and development features.
+# 'next dev' typically binds to 0.0.0.0 by default, allowing external access.
+CMD ["pnpm", "run", "dev"]
