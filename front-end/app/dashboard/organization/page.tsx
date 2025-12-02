@@ -8,6 +8,7 @@ import { organizations, users } from '@/app/lib/placeholder-data';
 
 export default function Page() {
   const [organization, setOrganization] = useState<Organization | null>(null);
+  const [organizationId, setOrganizationId] = useState<string>('');
   const [usersList, setUsersList] = useState<User[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -15,37 +16,43 @@ export default function Page() {
   const [showOrganizationModal, setShowOrganizationModal] = useState(false);
 
   useEffect(() => {
-    getUserOrganization();
-    getOrganizationUsers();
-    setOrganization(organizations[0]);
-    setSelectedOrganization(organizations[0]);
-    setUsersList(users as User[]);
+    const orgId = "2";
+    setOrganizationId(orgId);
+    getUserOrganization(orgId);
+    getOrganizationUsers(orgId);
   }, []);
 
-  const getUserOrganization = async () => {
+  const getUserOrganization = async (id: string) => {
+    if (!id) {
+      console.error('Organization ID is required');
+      return;
+    }
+
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      // Get all organizations and use the first one, or get by ID if we have it
-      // Note: If you have the organization_id from user context, use: /organizations/<id>
-      const response = await fetch(`${apiBaseUrl}/organizations`);
+      const response = await fetch(`${apiBaseUrl}/organizations/${id}`);
       if (!response.ok) {
-        console.error('Failed to fetch organizations');
+        console.error('Failed to fetch organization');
         return;
       }
       const data = await response.json();
       console.log(data);
-      // If data is an array, take the first organization; otherwise use the single object
-      const org = Array.isArray(data) ? data[0] : data;
-      setOrganization(org);
+      setOrganization(data);
+      setOrganizationId(data.organization_id);
     } catch (error) {
       console.error('Error fetching organization:', error);
     }
   }
 
-  const getOrganizationUsers = async () => {
+  const getOrganizationUsers = async (id: string) => {
+    if (!id) {
+      console.error('Organization ID is required');
+      return;
+    }
+
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-      const response = await fetch(`${apiBaseUrl}/users`);
+      const response = await fetch(`${apiBaseUrl}/organizations/${id}/users`);
       if (!response.ok) {
         console.error('Failed to fetch users');
         return;
@@ -116,8 +123,9 @@ export default function Page() {
       setSelectedOrganization(data);
       setShowOrganizationModal(false);
       
-      // Refresh the organization data
-      getUserOrganization();
+      // Refresh the organization data and users
+      getUserOrganization(orgId.toString());
+      getOrganizationUsers(orgId.toString());
     } catch (error) {
       console.error("Error updating organization:", error);
       alert("An error occurred while updating the organization");
@@ -225,7 +233,9 @@ export default function Page() {
       setShowUserModal(false);
       
       // Refresh the users data
-      getOrganizationUsers();
+      if (organizationId) {
+        getOrganizationUsers(organizationId);
+      }
     } catch (error) {
       console.error("Error updating user:", error);
       alert("An error occurred while updating the user");
@@ -239,7 +249,7 @@ export default function Page() {
 
   return (
     <div>
-      <h1>Organization</h1>
+      <h1 className="text-2xl font-bold text-center mb-4">Organization</h1>
       <div className="flex flex-col padding-20 gap-2">
         <p className="text-lg font-bold">Name: {organization?.name}</p>
         <p className="text-lg font-bold">ID: {organization?.organization_id}</p>
