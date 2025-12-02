@@ -10,6 +10,7 @@ export default function ItemsGridTest() {
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [search, setSearch] = useState('');
+    
     useEffect(() => {
         setItems(item);
         refreshItems();
@@ -223,10 +224,31 @@ export default function ItemsGridTest() {
         setShowModal(true);
     }
 
+    const handleSearch = async () => {
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${apiBaseUrl}/items?search=${search}`);
+            if (!response.ok) {
+                console.error('Failed to search items');
+                return;
+            }
+            const fetchedItems = await response.json();
+            console.log(fetchedItems);
+            setItems(fetchedItems);
+            
+        } catch (error) {
+            console.error('Error searching items:', error);
+        }
+    }
     return (
         <div>
-            <button className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 cursor-pointer mb-4 ml-4 mr-4" onClick={handleCreateItem}>Create Item</button>
-            <input type="text" className="border border-gray-300 rounded-md px-3 py-2 mb-4 ml-4 mr-4 w-4/5" placeholder="Search items" onChange={(e) => setSearch(e.target.value)} />
+            <div className="flex justify-center mb-4">
+                <button className="bg-black text-white w-8/10 ml-4 mr-4 my-4 px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer" onClick={handleCreateItem}>Create Item</button>
+            </div>
+            <div className="flex justify-center mb-4">
+                <button className="bg-black text-white w-1/10 px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer mb-4 ml-4 mr-4" onClick={handleSearch}>Search</button>
+                <input type="text" className="border border-gray-300 w-8/10 rounded-md px-3 py-2 mb-4 ml-4 mr-4 w-4/5" placeholder="Search items" onChange={(e) => setSearch(e.target.value)} />
+            </div>
             <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} onSave={handleSaveItem} />
             <div className="grid grid-cols-3 gap-4 mt-4 mb-4">
                 
