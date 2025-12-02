@@ -73,9 +73,52 @@ export default function ItemsGridTest() {
         setSelectedItem(null);
     }
 
+    const syncItemToEbay = async (item: Partial<Item>, itemId?: string) => {
+        try {
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            
+            // Generate SKU from item_id if available, otherwise use a temporary SKU
+            const sku = itemId || item.item_id || `ITEM-${Date.now()}`;
+            
+            // Prepare the request body for eBay API
+            const ebayPayload = {
+                item_id: itemId || item.item_id || null,
+                title: item.title || '',
+                description: item.description || '',
+                category: item.category || '',
+                quantity: 1, // Default quantity, can be made configurable later
+                price: item.price || 0,
+            };
+
+            const response = await fetch(`${apiBaseUrl}/ebay/inventory/${sku}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(ebayPayload),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                console.error('Failed to sync item to eBay:', error);
+                alert(`Item saved, but failed to sync to eBay: ${error.error || error.details || 'Unknown error'}`);
+                return false;
+            }
+
+            const ebayResult = await response.json();
+            console.log('Item synced to eBay successfully:', ebayResult);
+            return true;
+        } catch (error) {
+            console.error('Error syncing item to eBay:', error);
+            alert('Item saved, but an error occurred while syncing to eBay');
+            return false;
+        }
+    }
+
     const handleSaveItem = async (updatedItem: Partial<Item>) => {
         try {
             const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            let savedItemId: string | undefined;
             
             if (updatedItem.item_id) {
                 const itemId = parseInt(updatedItem.item_id, 10);
@@ -94,6 +137,7 @@ export default function ItemsGridTest() {
                         description: updatedItem.description,
                         category: updatedItem.category,
                         list_date: updatedItem.list_date,
+                        price: updatedItem.price,
                     }),
                 });
 
@@ -106,6 +150,7 @@ export default function ItemsGridTest() {
 
                 const savedItem = await response.json();
                 console.log('Item updated successfully:', savedItem);
+                savedItemId = String(savedItem.item_id);
             } else {
                 // Create new item
                 if (!updatedItem.title || !updatedItem.creator_id) {
@@ -130,6 +175,7 @@ export default function ItemsGridTest() {
                         description: updatedItem.description,
                         category: updatedItem.category,
                         list_date: updatedItem.list_date,
+                        price: updatedItem.price,
                         creator_id: creatorId,
                     }),
                 });
@@ -143,6 +189,12 @@ export default function ItemsGridTest() {
 
                 const savedItem = await response.json();
                 console.log('Item created successfully:', savedItem);
+                savedItemId = String(savedItem.item_id);
+            }
+
+            // If isOnEbay is checked, sync the item to eBay
+            if (updatedItem.isOnEbay) {
+                await syncItemToEbay(updatedItem, savedItemId);
             }
 
             // Refresh items list

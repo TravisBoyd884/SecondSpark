@@ -23,6 +23,7 @@ export type Item = {
   description: string;
   category: string;
   list_date: string;
+  price: number;
   isOnEtsy: boolean;
   isOnEbay: boolean;
   creator_id: string;
