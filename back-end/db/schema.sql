@@ -203,9 +203,9 @@ INSERT INTO Organization (name) VALUES
 -- AppUser
 INSERT INTO AppUser (username, password, email, organization_id, organization_role) VALUES
 ('alice', 'pass123', 'alice@techcorp.com',  (SELECT organization_id FROM Organization WHERE name='TechCorp'), 'Admin'),
-('bob',   'securepwd', 'bob@greensoft.com', (SELECT organization_id FROM Organization WHERE name='GreenSoft'), 'Manager'),
-('carol', 'qwerty', 'carol@edusmart.com',   (SELECT organization_id FROM Organization WHERE name='EduSmart'), 'User'),
-('dave',  'letmein', 'dave@healthwave.com', (SELECT organization_id FROM Organization WHERE name='HealthWave'), 'Analyst'),
+('bob',   'securepwd', 'bob@greensoft.com', (SELECT organization_id FROM Organization WHERE name='GreenSoft'), 'User'),
+('carol', 'qwerty', 'carol@edusmart.com',   (SELECT organization_id FROM Organization WHERE name='EduSmart'), 'Admin'),
+('dave',  'letmein', 'dave@healthwave.com', (SELECT organization_id FROM Organization WHERE name='HealthWave'), 'User'),
 ('eve',   'mypassword', 'eve@aerolabs.com', (SELECT organization_id FROM Organization WHERE name='AeroLabs'), 'User');
 
 
