@@ -4,6 +4,7 @@ import requests
 import time
 import json
 import random
+import io
 from datetime import datetime
 
 # --- Configuration ---
@@ -325,6 +326,104 @@ def test_item_crud_and_fetch():
              f"{BASE_URL}/items/{TEST_DATA['new_item_id']}", data=put_data, expected_status=200)
 
 
+
+def test_item_image_routes():
+    print("\n\n#####################################################")
+    print("## 📸 ITEM IMAGE TESTS")
+    print("#####################################################")
+
+    item_id = TEST_DATA["EXISTING_ITEM_ID"] # Should be 1 ('Wireless Mouse')
+    new_image_id = None 
+
+    # --- Test 1: Successful Image Upload (POST /item/<id>/image) ---
+    upload_url = f"{BASE_URL}/item/{item_id}/image"
+    
+    # 1.1 Simulate a valid image file in memory for multipart upload
+    # The bytes are arbitrary; the key is the structure of the 'files' dictionary.
+    mock_file = io.BytesIO(b"mock image data for test upload")
+    
+    # 'file' must match request.files['file'] in routes.py
+    files = {'file': ('test_upload.jpg', mock_file, 'image/jpeg')}
+    # 'is_primary' is an optional form field
+    data = {'is_primary': 'true'} 
+
+    print("\n--- Running Test: POST Image Upload (Success) ---")
+    try:
+        # Note: Must use a direct requests call as the run_test helper is JSON-only
+        response = requests.post(upload_url, files=files, data=data) 
+        
+        status_match = response.status_code == 201
+        print(f"[{'PASS' if status_match else 'FAIL'}] POST {upload_url}")
+        print(f"Status: {response.status_code} (Expected: 201)")
+
+        if status_match:
+            res_data = response.json()
+            print(f"Success Payload: {res_data}")
+            
+            # --- Test 2: Successful Image Retrieval (GET /item/<id>/images) ---
+            retrieve_url = f"{BASE_URL}/item/{item_id}/images"
+            res_retrieval = run_test(
+                "GET Item Images (Check for new upload)", 
+                'GET', 
+                retrieve_url, 
+                expected_status=200
+            )
+
+            if res_retrieval and isinstance(res_retrieval, list) and len(res_retrieval) > 0:
+                 print(f"[INFO] Successfully retrieved {len(res_retrieval)} images for Item {item_id}.")
+                 
+                 # Verify structure
+                 first_image = res_retrieval[0]
+                 assert "image_url" in first_image, "Image object missing 'image_url'"
+                 assert "is_primary" in first_image, "Image object missing 'is_primary'"
+                 
+                 # The last one added should be the one we just uploaded
+                 # Assuming the DB returns image_id, we save it for potential cleanup
+                 if "image_id" in first_image:
+                     new_image_id = first_image["image_id"]
+                 
+            else:
+                 print("[FAIL] Image retrieval failed or returned an empty list.")
+        
+        else:
+             print(f"Upload failed. Response: {response.text}")
+             
+
+    except requests.exceptions.ConnectionError:
+        print(f"[FATAL] Could not connect to {BASE_URL}. Is the Flask app running?")
+        return
+    except Exception as e:
+        print(f"[FATAL] An unexpected error occurred during image upload: {e}")
+        return
+        
+    # --- Test 3: Upload Failure (No file part) ---
+    no_file_data = {'is_primary': 'false'}
+    print("\n--- Running Test: POST Image Upload (Fail - No file part) ---")
+    # Must use direct requests.post without the 'files' argument
+    response_no_file = requests.post(upload_url, data=no_file_data)
+    run_test(
+        "POST Image Upload (Fail - No file part)", 
+        'POST', 
+        upload_url, 
+        data=no_file_data, 
+        expected_status=400 
+    )
+    
+    # --- Test 4: Retrieval Failure (Non-existent item) ---
+    non_existent_item_id = 99999
+    retrieve_fail_url = f"{BASE_URL}/item/{non_existent_item_id}/images"
+    run_test(
+        f"GET Item Images (Fail - Item {non_existent_item_id} not found)", 
+        'GET', 
+        retrieve_fail_url, 
+        expected_status=404 
+    )
+    
+    # --- Test 5: (Placeholder for Delete) ---
+    if new_image_id:
+        print(f"\n[INFO] Test data cleanup: Image ID {new_image_id} created. Delete route not implemented.")
+
+
 # ======================================================================
 # 4. TRANSACTION CRUD & Custom Fetch TESTS
 # ======================================================================
@@ -455,6 +554,7 @@ if __name__ == "__main__":
     test_transaction_crud_and_fetch()
     test_organization_users_fetch()
     test_transaction_item_link()
+    test_item_image_routes()
     test_register_user()
     
     # Optional: Run cleanup to remove test data
