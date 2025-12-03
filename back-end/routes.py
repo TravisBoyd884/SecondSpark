@@ -10,6 +10,7 @@ from utils.etsy_interface import EtsyInterface, EtsyAPIError
 # For file uploads (photos)
 from werkzeug.utils import secure_filename
 import uuid
+import os
 
 api = Blueprint("api", __name__)  # This stays global
 
