@@ -285,6 +285,26 @@ class DBInterface:
         return self._execute_dml(sql, (item_id,))
 
     # =======================================================================================
+    # ItemImage CRUD
+    # =======================================================================================
+
+    def create_item_image(self, item_id: int, image_url: str, is_primary: bool = False) -> bool:
+        """Inserts a new image reference for an item."""
+        sql = "INSERT INTO ItemImage (item_id, image_url, is_primary) VALUES (%s, %s, %s);"
+        params = (item_id, image_url, is_primary)
+        return self._execute_dml(sql, params)
+
+    def get_images_by_item_id(self, item_id: int):
+        """Retrieves all image references for a given item, ordered by primary status."""
+        sql = "SELECT image_id, image_url, is_primary, upload_date FROM ItemImage WHERE item_id = %s ORDER BY is_primary DESC, upload_date ASC;"
+        return self.execute_query(sql, params=(item_id,), fetch_all=True)
+
+    def delete_item_image(self, image_id: int) -> bool:
+        """Deletes an image reference by its ID."""
+        sql = "DELETE FROM ItemImage WHERE image_id = %s;"
+        return self._execute_dml(sql, (image_id,))
+
+    # =======================================================================================
     # AppTransaction CRUD
     # =======================================================================================
 
