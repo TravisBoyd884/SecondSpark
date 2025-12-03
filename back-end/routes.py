@@ -7,7 +7,21 @@ from db.interface import DBInterface  # Our DB interface class
 from utils.ebay_interface import EbayInterface, EbayAPIError
 from utils.etsy_interface import EtsyInterface, EtsyAPIError
 
+# For file uploads (photos)
+from werkzeug.utils import secure_filename
+import uuid
+import os
+
 api = Blueprint("api", __name__)  # This stays global
+
+
+# --- Configuration for file uploads (You will need to define this in your main Flask app config) ---
+UPLOAD_FOLDER = 'static/uploads' # This should be configured in app.config
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 class APIRoutes:
@@ -324,6 +338,53 @@ class APIRoutes:
                     "etsy_sync": etsy_status,
                 }
             ), 200
+
+        # Upload an image for a given item id
+        @api.route('/item/<int:item_id>/image', methods=['POST'])
+        def upload_item_image(item_id):
+            # Check if the post request has the file part
+            if 'file' not in request.files:
+                return jsonify({"error": "No file part in the request"}), 400
+            file = request.files['file']
+            
+            # If user does not select file, browser also submits an empty part without filename
+            if file.filename == '':
+                return jsonify({"error": "No selected file"}), 400
+            
+            if file and allowed_file(file.filename):
+                # 1. Generate a unique filename (important to prevent clashes)
+                filename = secure_filename(file.filename)
+                unique_filename = str(uuid.uuid4()) + "_" + filename
+                
+                # You'll need access to the main application's config to get UPLOAD_FOLDER
+                # For simplicity, we'll use the hardcoded path from the config example above
+                save_path = os.path.join(UPLOAD_FOLDER, unique_filename)
+                file.save(save_path)
+                
+                # 2. Store the public-facing URL/path in the database
+                # In a real app, this would be a full URL (e.g., S3 URL or your server's static path)
+                # Assuming 'static' folder is served at '/' path:
+                image_url = f"/uploads/{unique_filename}"
+                
+                # Optional: Check for 'is_primary' in form data
+                is_primary = request.form.get('is_primary', 'false').lower() in ('true', '1', 't')
+                
+                success = self.db.create_item_image(item_id, image_url, is_primary)
+                
+                if success:
+                    return jsonify({"message": "Image uploaded successfully", "image_url": image_url}), 201
+                else:
+                    return jsonify({"error": "Failed to save image reference to DB"}), 500
+
+            return jsonify({"error": "Invalid file type"}), 400
+
+        # Get images for a given item id
+        @api.route('/item/<int:item_id>/images', methods=['GET'])
+        def get_item_images(item_id):
+            images = self.db.get_images_by_item_id(item_id)
+            if images:
+                return jsonify(images), 200
+            return jsonify({"message": "No images found for this item"}), 404
 
         # ----------------------------
         # Organizations
