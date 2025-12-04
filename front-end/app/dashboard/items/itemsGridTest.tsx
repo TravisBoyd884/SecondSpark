@@ -5,11 +5,19 @@ import { item } from '@/app/lib/placeholder-data';
 import ItemModal from './itemModal';
 import '@/app/dashboard/items/items.css';
 
+interface ItemImage {
+    image_id: number;
+    item_id: number;
+    image_url: string;
+    is_primary: boolean;
+}
+
 export default function ItemsGridTest() {
     const [items, setItems] = useState<Item[]>([]);
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [search, setSearch] = useState('');
+    const [itemImages, setItemImages] = useState<Record<string, string>>({});
     
     useEffect(() => {
         setItems(item);
@@ -40,9 +48,52 @@ export default function ItemsGridTest() {
                 creator_id: String(item.creator_id || ''),
             }));
             setItems(itemsWithDefaults);
+            
+            // Fetch images for all items
+            await fetchImagesForItems(itemsWithDefaults);
         } catch (error) {
             console.error('Error fetching items:', error);
         }
+    }
+
+    const fetchImagesForItems = async (itemsList: Item[]) => {
+        const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const imagesMap: Record<string, string> = {};
+        
+        // Fetch images for each item
+        await Promise.all(
+            itemsList.map(async (item) => {
+                try {
+                    const itemIdNum = parseInt(item.item_id, 10);
+                    if (isNaN(itemIdNum)) {
+                        return;
+                    }
+                    
+                    const response = await fetch(`${apiBaseUrl}/item/${itemIdNum}/images`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        // Handle both array and object responses
+                        let images: ItemImage[] = [];
+                        if (Array.isArray(data)) {
+                            images = data;
+                        } else if (data.images && Array.isArray(data.images)) {
+                            images = data.images;
+                        }
+                        
+                        if (images && images.length > 0) {
+                            // Use the first image (which should be primary if available)
+                            const imageUrl = images[0].image_url;
+                            // Construct full URL for the image
+                            imagesMap[item.item_id] = `${apiBaseUrl}${imageUrl}`;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error fetching images for item ${item.item_id}:`, error);
+                }
+            })
+        );
+        
+        setItemImages(imagesMap);
     }
   
     const handleViewItem = (item: Item) => {
@@ -55,12 +106,20 @@ export default function ItemsGridTest() {
       setSelectedItem(null);
     }
   
-    const handleDeleteItem = async () => {
+    const handleDeleteItem = async (item?: Item) => {
+        // Use passed item or fall back to selectedItem (for modal usage)
+        const itemToDelete = item || selectedItem;
+        
+        if (!itemToDelete?.item_id) {
+            console.error('No item selected for deletion');
+            return;
+        }
+
         console.log('Delete item');
-        console.log(selectedItem);
+        console.log(itemToDelete);
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
-        const response = await fetch(`${apiBaseUrl}/items/${selectedItem?.item_id}`, {
+        const response = await fetch(`${apiBaseUrl}/items/${itemToDelete.item_id}`, {
             method: 'DELETE',
         });
         if (!response.ok) {
@@ -198,7 +257,7 @@ export default function ItemsGridTest() {
                 await syncItemToEbay(updatedItem, savedItemId);
             }
 
-            // Refresh items list
+            // Refresh items list (which will also fetch images)
             await refreshItems();
             // Close modal
             setShowModal(false);
@@ -226,18 +285,53 @@ export default function ItemsGridTest() {
 
     const handleSearch = async () => {
         try {
-            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-            const response = await fetch(`${apiBaseUrl}/items?search=${search}`);
-            if (!response.ok) {
-                console.error('Failed to search items');
+            // Validate that search input is a valid number (item ID)
+            const itemId = parseInt(search.trim(), 10);
+            if (isNaN(itemId)) {
+                alert('Please enter a valid item ID (number)');
                 return;
             }
-            const fetchedItems = await response.json();
-            console.log(fetchedItems);
-            setItems(fetchedItems);
+
+            const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+            const response = await fetch(`${apiBaseUrl}/items/${itemId}`);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    alert(`Item with ID ${itemId} not found`);
+                    setItems([]);
+                    setItemImages({});
+                } else {
+                    console.error('Failed to search item');
+                    alert('Failed to search item');
+                }
+                return;
+            }
+
+            const fetchedItem = await response.json();
+            console.log(fetchedItem);
+            
+            // Map API response to Item type, converting types and adding defaults
+            // Convert single item to array format for consistency
+            const itemsWithDefaults: Item[] = [{
+                item_id: String(fetchedItem.item_id),
+                title: fetchedItem.title || '',
+                description: fetchedItem.description || '',
+                category: fetchedItem.category || '',
+                list_date: fetchedItem.list_date || '',
+                price: fetchedItem.price || 0,
+                isOnEtsy: fetchedItem.isOnEtsy || false,
+                isOnEbay: fetchedItem.isOnEbay || false,
+                creator_id: String(fetchedItem.creator_id || ''),
+            }];
+            
+            setItems(itemsWithDefaults);
+            
+            // Fetch images for the searched item
+            await fetchImagesForItems(itemsWithDefaults);
             
         } catch (error) {
             console.error('Error searching items:', error);
+            alert('An error occurred while searching for the item');
         }
     }
     return (
@@ -247,7 +341,7 @@ export default function ItemsGridTest() {
             </div>
             <div className="flex justify-center mb-4">
                 <button className="bg-black text-white w-1/10 px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer mb-4 ml-4 mr-4" onClick={handleSearch}>Search</button>
-                <input type="text" className="border border-gray-300 w-8/10 rounded-md px-3 py-2 mb-4 ml-4 mr-4 w-4/5" placeholder="Search items" onChange={(e) => setSearch(e.target.value)} />
+                <input type="text" className="border border-gray-300 w-8/10 rounded-md px-3 py-2 mb-4 ml-4 mr-4 w-4/5" placeholder="Search by Item ID" onChange={(e) => setSearch(e.target.value)} />
             </div>
             <ItemModal show={showModal} onHide={handleCloseModal} item={selectedItem} onDelete={handleDeleteItem} onSave={handleSaveItem} />
             <div className="grid grid-cols-3 gap-4 mt-4 mb-4">
@@ -255,11 +349,22 @@ export default function ItemsGridTest() {
                 
                 {items.map((item) => (
                     <div className="card p-4 shadow-sm rounded-md h-full flex flex-col" key={item.item_id}>
+                        {itemImages[item.item_id] && (
+                            <img 
+                                src={itemImages[item.item_id]} 
+                                alt={item.title}
+                                className="w-full h-48 object-cover rounded-md mb-4"
+                                onError={(e) => {
+                                    // Hide image if it fails to load
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                            />
+                        )}
                         <h2 className="text-lg font-bold mb-2">{item.title}</h2>
                         <p className="flex-grow mb-4">{item.description}</p>
                         <div className="flex gap-4 mt-auto">
                             <button className="bg-white text-black border border-black px-4 py-2 rounded-md hover:bg-gray-100 cursor-pointer" onClick={() => handleViewItem(item)}>View</button>
-                            <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 cursor-pointer" onClick={() => handleDeleteItem()}>Delete</button>
+                            <button className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 cursor-pointer" onClick={() => handleDeleteItem(item)}>Delete</button>
                         </div>
                     </div>
                 ))}

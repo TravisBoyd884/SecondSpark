@@ -229,12 +229,10 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                     />
                 </div>
                 
-                {/* Image Upload Section */}
                 {item?.item_id && (
                     <div className="flex flex-col gap-2 border-t pt-4 mt-4">
                         <label className="font-semibold">Images</label>
                         
-                        {/* Image Upload Input */}
                         <div className="flex flex-col gap-2">
                             <input
                                 id="image-upload"
@@ -254,7 +252,6 @@ export default function ItemModal({ show, onHide, item, onDelete, onSave }: Item
                             )}
                         </div>
                         
-                        {/* Display Existing Images */}
                         {images.length > 0 && (
                             <div className="mt-4">
                                 <div className="grid grid-cols-3 gap-4">
