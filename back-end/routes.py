@@ -135,6 +135,37 @@ class APIRoutes:
     # Route registration
     # ------------------------------------------------------------------
 
+    def _get_ebay_interface_for_user(self, user_id):
+        """
+        Returns an EbayInterface configured with this user's tokens,
+        or None if they don't have an eBay account linked.
+        """
+        user = self.db.get_app_user_by_id(user_id)
+        if not user or not user.get("ebay_account_id"):
+            return None
+
+        ebay_account = self.db.get_ebay_account_by_id(user["ebay_account_id"])
+        if not ebay_account:
+            return None
+
+        # For now, env comes from EBAY_ENV, not per-account; ignore ebay_account["environment"]
+        ebay = EbayInterface()
+
+        expiry_ts = (
+            ebay_account["token_expires_at"].timestamp()
+            if ebay_account.get("token_expires_at")
+            else None
+        )
+
+        # Just set the user access token; you can store/refresh with refresh_token elsewhere
+        if ebay_account.get("access_token"):
+            ebay.set_user_access_token(
+                token=ebay_account["access_token"],
+                expiry=expiry_ts,
+            )
+
+        return ebay
+
     def register_routes(self):
         # ----------------------------
         # Auth / Login
@@ -164,8 +195,40 @@ class APIRoutes:
                 "email": user_row["email"],
                 "organization_id": user_row["organization_id"],
                 "organization_role": user_row["organization_role"],
+                "ebay_account_id": user_row.get("ebay_account_id"),
+                "etsy_account_id": user_row.get("etsy_account_id"),
             }
-            return jsonify({"message": "Login successful", "user": user}), 200
+
+            # Marketplace “global” status flags
+            ebay_linked = bool(user_row.get("ebay_account_id"))
+            etsy_linked = bool(user_row.get("etsy_account_id"))
+
+            # Optional: light metadata from EbayAccount / EtsyAccount (no tokens)
+            ebay_meta = None
+            if ebay_linked:
+                ebay_acc = self.db.get_ebay_account_by_id(user_row["ebay_account_id"])
+                if ebay_acc:
+                    ebay_meta = {
+                        "account_id": ebay_acc["account_id"],
+                        "user_id": ebay_acc["user_id"],
+                        "environment": ebay_acc["environment"],
+                        "has_tokens": bool(ebay_acc.get("access_token")),
+                    }
+
+            # (Same idea for Etsy if/when you wire that up)
+
+            return jsonify(
+                {
+                    "message": "Login successful",
+                    "user": user,
+                    "marketplaces": {
+                        "ebay_linked": ebay_linked,
+                        "etsy_linked": etsy_linked,
+                        "ebay": ebay_meta,
+                        # "etsy": etsy_meta
+                    },
+                }
+            ), 200
 
         @api.route("/register", methods=["POST"])
         def register_user():
@@ -202,9 +265,30 @@ class APIRoutes:
             if not success:
                 return jsonify({"error": "Failed to create user. Username or email may already be in use."}), 500
 
-            user_id = self.db.get_user_id_by_username(username)
+            user_row = self.db.get_app_user_by_username(username)
+            user_id = user_row["user_id"]
+
+            user = {
+                "user_id": user_id,
+                "username": user_row["username"],
+                "email": user_row["email"],
+                "organization_id": user_row["organization_id"],
+                "organization_role": user_row["organization_role"],
+                "ebay_account_id": user_row.get("ebay_account_id"),
+                "etsy_account_id": user_row.get("etsy_account_id"),
+            }
+
             return (
-                jsonify({"message": "User registered successfully", "user_id": user_id}),
+                jsonify(
+                    {
+                        "message": "User registered successfully",
+                        "user": user,
+                        "marketplaces": {
+                            "ebay_linked": False,
+                            "etsy_linked": False,
+                        },
+                    }
+                ),
                 201,
             )
 
@@ -313,9 +397,9 @@ class APIRoutes:
                 list_date = None
 
             # Price is included
-            success = self.db.create_item(title, price, description, category, list_date, creator_id)
-            if not success:
-                return jsonify({"error": "Failed to create item"}), 500
+            # success = self.db.create_item(title, price, description, category, list_date, creator_id)
+            # if not success:
+            #     return jsonify({"error": "Failed to create item"}), 500
 
             # Retrieve the new item's ID using a custom query with RETURNING
             # Note: Using RETURNING is more robust than ordering by DESC
@@ -671,6 +755,31 @@ class APIRoutes:
         # Ebay Routes
         #################
 
+        @api.route("/users/<int:user_id>/ebay_sync_item/<int:item_id>", methods=["POST"])
+        def ebay_sync_item_for_user(user_id, item_id):
+            item_row = self.db.get_item_by_id(item_id)
+            if not item_row:
+                return jsonify({"error": f"Item {item_id} not found"}), 404
+
+            ebay = self._get_ebay_interface_for_user(user_id)
+            if not ebay:
+                return jsonify({"error": f"User {user_id} is not linked to an eBay account"}), 400
+
+            item_dict = {
+                "sku": item_row["sku"],
+                "title": item_row["title"],
+                "description": item_row.get("description") or "",
+                "category": item_row.get("category") or "",
+                "quantity": item_row.get("quantity") or 0,
+                "price": str(item_row.get("price") or "0.00"),
+            }
+
+            try:
+                result = ebay.sync_item_create_or_update(item_dict)
+                return jsonify({"message": "Synced to eBay", "ebay_response": result}), 200
+            except EbayAPIError as e:
+                return jsonify({"error": str(e)}), 502
+
         @api.route("/users/<int:user_id>/ebay_account", methods=["GET"])
         def get_ebay_account_for_user(user_id):
             """
@@ -727,64 +836,38 @@ class APIRoutes:
 
         @api.route("/ebay/inventory/<string:sku>", methods=["GET"])
         def ebay_get_inventory_item(sku):
-            """
-            Directly fetch a single eBay inventory item by SKU using the EbayInterface.
-            This does NOT touch the local Item table; it's a thin proxy to eBay.
-
-            Response:
-              200: JSON payload from eBay (via EbayInterface._request)
-              502: Error talking to eBay
-              503: eBay integration not configured
-            """
             if not getattr(self, "ebay", None):
                 return jsonify({"error": "eBay integration not configured"}), 503
 
             try:
-                # Assuming EbayInterface._request(path=...) talks to the Sell Inventory API
-                data = self.ebay._request("GET", f"/inventory_item/{sku}")
+                data = self.ebay.get_inventory_item(sku)
                 return jsonify(data), 200
             except EbayAPIError as e:
                 return jsonify({"error": str(e)}), 502
 
         @api.route("/ebay/inventory/<string:sku>", methods=["POST", "PUT"])
         def ebay_upsert_inventory_item(sku):
-            """
-            Create or update an eBay inventory item for the given SKU.
-
-            Expected JSON body (example):
-            {
-              "title": "My Item",
-              "description": "Some description",
-              "category": "Electronics",
-              "quantity": 5,
-              "price": 19.99
-            }
-
-            This builds an item_dict compatible with EbayInterface.sync_item_create_or_update.
-            """
             if not getattr(self, "ebay", None):
                 return jsonify({"error": "eBay integration not configured"}), 503
 
             data = request.get_json(force=True) or {}
 
-            # Build the generic item_dict we’ve been using everywhere for marketplace sync
-            item_dict = {
-                "item_id": data.get("item_id"),  # optional, for local reference
-                "sku": sku,
-                "title": data.get("title", ""),
-                "description": data.get("description", ""),
-                "category": data.get("category", ""),
-                "quantity": data.get("quantity", 0),
-                "price": str(data.get("price", "0.00")),
+            inventory_payload = {
+                "product": {
+                    "title": data.get("title", ""),
+                    "description": data.get("description", data.get("title", "")),
+                    # extend later with brand/UPC/etc.
+                }
             }
 
             try:
-                ebay_result = self.ebay.sync_item_create_or_update(item_dict)
+                inv_result = self.ebay.upsert_inventory_item(sku, inventory_payload)
+                # If you want offers/listings too, call sync_item_create_or_update with a user token.
                 return jsonify(
                     {
                         "message": "eBay inventory item upserted",
                         "sku": sku,
-                        "ebay_response": ebay_result,
+                        "inventory": inv_result,
                     }
                 ), 200
             except EbayAPIError as e:
@@ -797,18 +880,11 @@ class APIRoutes:
 
         @api.route("/ebay/inventory/<string:sku>", methods=["DELETE"])
         def ebay_delete_inventory_item(sku):
-            """
-            Delete an eBay inventory item by SKU.
-
-            This delegates to EbayInterface.sync_item_delete and does not
-            remove anything from the local Item table.
-            """
             if not getattr(self, "ebay", None):
                 return jsonify({"error": "eBay integration not configured"}), 503
 
             try:
-                # Our sync_item_delete helper expects a dict with at least 'sku'
-                self.ebay.sync_item_delete({"sku": sku})
+                self.ebay.delete_inventory_item(sku)
                 return jsonify(
                     {
                         "message": f"eBay inventory item with SKU {sku} deleted",

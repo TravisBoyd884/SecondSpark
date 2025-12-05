@@ -20,6 +20,8 @@ CREATE TABLE AppUser (
     organization_role VARCHAR(255),
     ebay_account_id INT,
     etsy_account_id INT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
 
     CONSTRAINT fk_appuser_org
         FOREIGN KEY (organization_id)
@@ -39,6 +41,8 @@ CREATE TABLE Item (
     category VARCHAR(255),
     list_date DATE,
     creator_id INT NOT NULL,
+    sku VARCHAR(255),
+    quantity INT,
 
     CONSTRAINT fk_item_creator
         FOREIGN KEY (creator_id)
@@ -111,6 +115,10 @@ CREATE TABLE Ebay (
     client_id VARCHAR(255),
     client_secret VARCHAR(255),
     environment VARCHAR(255) NOT NULL DEFAULT 'sandbox',
+    access_token TEXT,
+    refresh_token TEXT,
+    token_expires_at TIMESTAMPTZ,
+
 
     CONSTRAINT fk_ebay_user
         FOREIGN KEY (user_id)
@@ -198,7 +206,6 @@ ADD CONSTRAINT fk_appuser_etsy
     FOREIGN KEY (etsy_account_id)
     REFERENCES Etsy(account_id)
     ON DELETE SET NULL;
-
 
 -- ============================================================
 -- TEST DATA
