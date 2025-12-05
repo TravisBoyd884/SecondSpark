@@ -218,6 +218,51 @@ class APIRoutes:
             user = self._user_row_to_dict(row)
             return jsonify(user), 200
 
+        @api.route("/users/<int:user_id>", methods=["PUT", "PATCH"])
+        def update_user(user_id):
+            """Updates an AppUser record. Accepts partial updates."""
+            # Fetch existing user data
+            row = self.db.get_app_user_by_id(user_id)
+            if not row:
+                return jsonify({"error": f"User {user_id} not found"}), 404
+
+            data = request.get_json(force=True) or {}
+            
+            # Use new data if provided, otherwise use existing data
+            password = data.get("password", row["password"])
+            email = data.get("email", row["email"])
+            organization_id = data.get("organization_id", row["organization_id"])
+            organization_role = data.get("organization_role", row["organization_role"])
+            ebay_account_id = data.get("ebay_account_id", row.get("ebay_account_id"))
+            etsy_account_id = data.get("etsy_account_id", row.get("etsy_account_id"))
+
+            success = self.db.update_app_user(
+                user_id, password, email, organization_id, organization_role,
+                ebay_account_id, etsy_account_id
+            )
+            if not success:
+                return jsonify({"error": f"Failed to update user {user_id}"}), 500
+
+            # Reload full row to return updated data
+            updated_row = self.db.get_app_user_by_id(user_id)
+            user = self._user_row_to_dict(updated_row)
+            return jsonify(user), 200
+
+        @api.route("/users/<int:user_id>", methods=["DELETE"])
+        def delete_user(user_id):
+            """Deletes an AppUser record by their ID."""
+            # Check if user exists first
+            row = self.db.get_app_user_by_id(user_id)
+            if not row:
+                return jsonify({"error": f"User {user_id} not found"}), 404
+
+            success = self.db.delete_app_user(user_id)
+            if not success:
+                return jsonify({"error": f"Failed to delete user {user_id}"}), 500
+
+            return jsonify({"message": f"User {user_id} deleted successfully"}), 200
+
+
         # ----------------------------
         # Items
         # ----------------------------
