@@ -1,6 +1,6 @@
 # app/routes.py
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, abort, send_from_directory
 from db.interface import DBInterface  # Our DB interface class
 
 # eBay and Etsy integration (kept for future use, but initialization logic is removed)

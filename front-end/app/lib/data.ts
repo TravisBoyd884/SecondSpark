@@ -15,7 +15,7 @@ import {
 } from "./definitions";
 
 export const api = axios.create({
-  baseURL: "http://127.0.0.1:5000", // Flask default
+  baseURL: "http://python_backend:5000", // Flask default
 });
 
 export async function fetchFirstOrganization(): Promise<Organization | null> {

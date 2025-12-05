@@ -305,16 +305,16 @@ INSERT INTO Item (title, price, description, category, list_date, creator_id) VA
 ----------------------------------------------------------------------
 
 INSERT INTO ItemImage (item_id, image_url, is_primary) VALUES
-(1, '/images/item_01_mouse.jpg', TRUE), (2, '/images/item_02_bottle.jpg', TRUE),
-(3, '/images/item_03_textbook.jpg', TRUE), (4, '/images/item_04_monitor.jpg', TRUE),
-(5, '/images/item_05_drone.jpg', TRUE), (6, '/images/item_06_keyboard.jpg', TRUE),
-(7, '/images/item_07_watch.jpg', TRUE), (8, '/images/item_08_tee.jpg', TRUE),
-(9, '/images/item_09_sunglasses.jpg', TRUE), (10, '/images/item_10_tablet.jpg', TRUE),
-(11, '/images/item_11_python.jpg', TRUE), (12, '/images/item_12_bands.jpg', TRUE),
-(13, '/images/item_13_mat.jpg', TRUE), (14, '/images/item_14_filament.jpg', TRUE),
-(15, '/images/item_15_robot.jpg', TRUE), (16, '/images/item_16_coffee.jpg', TRUE),
-(17, '/images/item_17_skillet.jpg', TRUE), (18, '/images/item_18_headphones.jpg', TRUE),
-(19, '/images/item_19_speaker.jpg', TRUE), (20, '/images/item_20_tent.jpg', TRUE);
+(1, '/images/item_1.jpg', TRUE), (2, '/images/item_2.jpg', TRUE),
+(3, '/images/item_3.jpg', TRUE), (4, '/images/item_4.jpg', TRUE),
+(5, '/images/item_5.jpg', TRUE), (6, '/images/item_6.jpg', TRUE),
+(7, '/images/item_7.jpg', TRUE), (8, '/images/item_8.jpg', TRUE),
+(9, '/images/item_9.jpg', TRUE), (10, '/images/item_10.jpg', TRUE),
+(11, '/images/item_11.jpg', TRUE), (12, '/images/item_12.jpg', TRUE),
+(13, '/images/item_13.jpg', TRUE), (14, '/images/item_14.jpg', TRUE),
+(15, '/images/item_15.jpg', TRUE), (16, '/images/item_16.jpg', TRUE),
+(17, '/images/item_17.jpg', TRUE), (18, '/images/item_18.jpg', TRUE),
+(19, '/images/item_19.jpg', TRUE), (20, '/images/item_20.jpg', TRUE);
 
 ----------------------------------------------------------------------
 -- AppTransaction (20 Rows)

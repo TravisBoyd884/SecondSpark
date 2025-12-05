@@ -1,6 +1,7 @@
 # flask imports
 from flask import Flask
 from flask_cors import CORS
+from flask import Blueprint, request, jsonify, abort, send_from_directory
 from routes import api, APIRoutes
 
 # Imports for database interface
@@ -42,6 +43,16 @@ def create_app():
     @app.route('/uploads/<filename>')
     def uploaded_file(filename):
         """Allows direct retrieval of uploaded images via URL, e.g., /uploads/my_pic.jpg"""
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+    # Route to serve a specific image file by name
+    @app.route('/images/<filename>')
+    def get_uploaded_image(filename):
+        """
+        Serves the requested file securely from the UPLOAD_FOLDER (static/uploads).
+        Example: GET /images/item_1.jpg will look for static/uploads/item_1.jpg.
+        """
+        # UPLOAD_FOLDER is expected to be configured in app.config (e.g., 'static/uploads')
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     return app
