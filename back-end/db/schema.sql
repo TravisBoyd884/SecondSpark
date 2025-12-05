@@ -24,6 +24,7 @@ CREATE TABLE AppUser (
     CONSTRAINT fk_appuser_org
         FOREIGN KEY (organization_id)
         REFERENCES Organization(organization_id)
+        ON DELETE SET NULL -- If an Organization is deleted, User's organization_id is set to NULL
 );
 
 -- ============================================================
@@ -42,6 +43,7 @@ CREATE TABLE Item (
     CONSTRAINT fk_item_creator
         FOREIGN KEY (creator_id)
         REFERENCES AppUser(user_id)
+        ON DELETE CASCADE -- If the Item's creator is deleted, delete the Item
 );
 
 -- ============================================================
@@ -76,6 +78,7 @@ CREATE TABLE AppTransaction (
     CONSTRAINT fk_transaction_seller
         FOREIGN KEY (seller_id)
         REFERENCES AppUser(user_id)
+        ON DELETE CASCADE -- If the Seller is deleted, delete their Transactions
 );
 
 -- ============================================================
@@ -89,11 +92,13 @@ CREATE TABLE AppTransaction_Item (
 
     CONSTRAINT fk_transitem_item
         FOREIGN KEY (item_id)
-        REFERENCES Item(item_id),
+        REFERENCES Item(item_id)
+        ON DELETE CASCADE, -- If Item is deleted, delete this link
 
     CONSTRAINT fk_transitem_transaction
         FOREIGN KEY (transaction_id)
         REFERENCES AppTransaction(transaction_id)
+        ON DELETE CASCADE -- If Transaction is deleted, delete this link
 );
 
 -- ============================================================
@@ -110,6 +115,7 @@ CREATE TABLE Ebay (
     CONSTRAINT fk_ebay_user
         FOREIGN KEY (user_id)
         REFERENCES AppUser(user_id)
+        ON DELETE CASCADE -- If User is deleted, delete their Ebay account
 );
 
 -- ============================================================
@@ -126,6 +132,7 @@ CREATE TABLE Etsy (
     CONSTRAINT fk_etsy_user
         FOREIGN KEY (user_id)
         REFERENCES AppUser(user_id)
+        ON DELETE CASCADE -- If User is deleted, delete their Etsy account
 );
 
 -- ============================================================
@@ -146,11 +153,13 @@ CREATE TABLE EbayItem (
 
     CONSTRAINT fk_ebayitem_item
         FOREIGN KEY (item_id)
-        REFERENCES Item(item_id),
+        REFERENCES Item(item_id)
+        ON DELETE CASCADE, -- If Item is deleted, delete its Ebay listing
 
     CONSTRAINT fk_ebayitem_account
         FOREIGN KEY (ebay_account_id)
         REFERENCES Ebay(account_id)
+        ON DELETE CASCADE -- If Ebay account is deleted, delete its listings
 );
 
 -- ============================================================
@@ -165,13 +174,14 @@ CREATE TABLE EtsyItem (
 
     CONSTRAINT fk_etsyitem_item
         FOREIGN KEY (item_id)
-        REFERENCES Item(item_id),
+        REFERENCES Item(item_id)
+        ON DELETE CASCADE, -- If Item is deleted, delete its Etsy listing
 
     CONSTRAINT fk_etsyitem_account
         FOREIGN KEY (etsy_account_id)
         REFERENCES Etsy(account_id)
+        ON DELETE CASCADE -- If Etsy account is deleted, delete its listings
 );
-
 
 -- ============================================================
 -- ADD FK FROM APPUSER → EBAY & ETSY
@@ -180,12 +190,14 @@ CREATE TABLE EtsyItem (
 ALTER TABLE AppUser
 ADD CONSTRAINT fk_appuser_ebay
     FOREIGN KEY (ebay_account_id)
-    REFERENCES Ebay(account_id);
+    REFERENCES Ebay(account_id)
+    ON DELETE SET NULL;
 
 ALTER TABLE AppUser
 ADD CONSTRAINT fk_appuser_etsy
     FOREIGN KEY (etsy_account_id)
-    REFERENCES Etsy(account_id);
+    REFERENCES Etsy(account_id)
+    ON DELETE SET NULL;
 
 
 -- ============================================================
@@ -305,16 +317,16 @@ INSERT INTO Item (title, price, description, category, list_date, creator_id) VA
 ----------------------------------------------------------------------
 
 INSERT INTO ItemImage (item_id, image_url, is_primary) VALUES
-(1, '/images/item_01_mouse.jpg', TRUE), (2, '/images/item_02_bottle.jpg', TRUE),
-(3, '/images/item_03_textbook.jpg', TRUE), (4, '/images/item_04_monitor.jpg', TRUE),
-(5, '/images/item_05_drone.jpg', TRUE), (6, '/images/item_06_keyboard.jpg', TRUE),
-(7, '/images/item_07_watch.jpg', TRUE), (8, '/images/item_08_tee.jpg', TRUE),
-(9, '/images/item_09_sunglasses.jpg', TRUE), (10, '/images/item_10_tablet.jpg', TRUE),
-(11, '/images/item_11_python.jpg', TRUE), (12, '/images/item_12_bands.jpg', TRUE),
-(13, '/images/item_13_mat.jpg', TRUE), (14, '/images/item_14_filament.jpg', TRUE),
-(15, '/images/item_15_robot.jpg', TRUE), (16, '/images/item_16_coffee.jpg', TRUE),
-(17, '/images/item_17_skillet.jpg', TRUE), (18, '/images/item_18_headphones.jpg', TRUE),
-(19, '/images/item_19_speaker.jpg', TRUE), (20, '/images/item_20_tent.jpg', TRUE);
+(1, '/images/item_1.jpg', TRUE), (2, '/images/item_2.jpg', TRUE),
+(3, '/images/item_3.jpg', TRUE), (4, '/images/item_4.jpg', TRUE),
+(5, '/images/item_5.jpg', TRUE), (6, '/images/item_6.jpg', TRUE),
+(7, '/images/item_7.jpg', TRUE), (8, '/images/item_8.jpg', TRUE),
+(9, '/images/item_9.jpg', TRUE), (10, '/images/item_10.jpg', TRUE),
+(11, '/images/item_11.jpg', TRUE), (12, '/images/item_12.jpg', TRUE),
+(13, '/images/item_13.jpg', TRUE), (14, '/images/item_14.jpg', TRUE),
+(15, '/images/item_15.jpg', TRUE), (16, '/images/item_16.jpg', TRUE),
+(17, '/images/item_17.jpg', TRUE), (18, '/images/item_18.jpg', TRUE),
+(19, '/images/item_19.jpg', TRUE), (20, '/images/item_20.jpg', TRUE);
 
 ----------------------------------------------------------------------
 -- AppTransaction (20 Rows)
