@@ -1,6 +1,5 @@
 import {
   User,
-  Mail,
   Building2,
   Shield,
   Calendar,
@@ -8,7 +7,9 @@ import {
   DollarSign,
   Clock,
 } from "lucide-react";
+import { redirect } from "next/navigation";
 import { getUserById, getUserStats } from "@/app/lib/data";
+import { getCurrentUser } from "@/app/lib/auth";
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "N/A";
@@ -30,7 +31,14 @@ function formatCurrency(amount: number): string {
 }
 
 export default async function Page() {
-  const userId = 1; // replace w/ auth later
+  const currentUser = await getCurrentUser();
+
+  // Not logged in → kick to login
+  if (!currentUser) {
+    redirect("/login");
+  }
+
+  const userId = currentUser.user_id;
 
   const [user, stats] = await Promise.all([
     getUserById(userId),

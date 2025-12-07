@@ -1,4 +1,3 @@
-// app/lib/auth.ts
 import { cookies } from "next/headers";
 import jwt from "jsonwebtoken";
 
@@ -9,8 +8,9 @@ interface JwtPayload {
   exp: number;
 }
 
-export function getCurrentUser(): JwtPayload | null {
-  const token = cookies().get("auth_token")?.value;
+export async function getCurrentUser(): Promise<JwtPayload | null> {
+  const cookieStore = await cookies(); // <-- await this
+  const token = cookieStore.get("auth_token")?.value;
   if (!token) return null;
 
   try {
