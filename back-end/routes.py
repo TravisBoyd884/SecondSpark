@@ -222,6 +222,12 @@ class APIRoutes:
             )
             return resp
 
+        @api.route("/logout", methods=["POST"])
+        def logout():
+            resp = make_response(jsonify({"message": "Logged out"}), 200)
+            resp.set_cookie("auth_token", "", expires=0)
+            return resp
+
         @api.route("/register", methods=["POST"])
         def register_user():
             """
