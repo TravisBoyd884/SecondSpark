@@ -115,29 +115,16 @@ export async function createTransaction(
   return response.data;
 }
 
-export async function createUser({
-  username,
-  password,
-  email,
-  organization_id,
-}: {
-  username: string;
-  password: string;
-  email: string;
-  organization_id: number;
-}) {
+export async function createUser(
+  payload: RegisterPayload,
+): Promise<RegisterResponse> {
   try {
-    const res = await api.post("/register", {
-      username,
-      password,
-      email,
-      organization_id,
-    });
-
-    // backend returns: { message: string, user_id: number }
+    const res = await api.post<RegisterResponse>("/register", payload);
     return res.data;
   } catch (err: any) {
-    if (err.response) return err.response.data;
+    if (err?.response?.data) {
+      return err.response.data as RegisterResponse;
+    }
     throw err;
   }
 }

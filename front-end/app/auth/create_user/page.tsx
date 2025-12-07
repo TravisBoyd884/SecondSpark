@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createUser } from "@/app/lib/data";
+import { RegisterResponse } from "@/app/lib/definitions";
 
 export default function Page() {
   const [username, setUsername] = useState("");
@@ -27,21 +28,19 @@ export default function Page() {
     }
 
     try {
-      const result = await createUser({
+      const result: RegisterResponse = await createUser({
         username,
         password,
         email,
         organization_id: orgIdNumber,
       });
 
-      if ((result as any).error) {
-        setError((result as any).error);
+      if (result.error) {
+        setError(result.error);
       } else {
-        const msg = (result as any).message || "User registered successfully";
+        const msg = result.message || "User registered successfully";
         const userId =
-          (result as any).user_id !== undefined
-            ? ` (ID: ${(result as any).user_id})`
-            : "";
+          result.user_id !== undefined ? ` (ID: ${result.user_id})` : "";
         setMessage(msg + userId);
 
         // Clear form
