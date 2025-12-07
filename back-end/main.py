@@ -29,7 +29,7 @@ else:
 # Configure flask app to support file upload/download
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
     APIRoutes()  # Initializes and binds the routes
     # 1. Set the configuration for the upload directory
     app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
