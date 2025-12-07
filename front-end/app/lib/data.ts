@@ -15,8 +15,8 @@ import {
 } from "./definitions";
 
 export const api = axios.create({
-  // When using the docker containers, baseURL = `http://python_backend:5000`
-  baseURL: "http://127.0.0.1:5000", // Flask default
+  baseURL: "http://localhost:5000", // your backend URL
+  withCredentials: true, // 🔑 this is required
 });
 
 export async function fetchFirstOrganization(): Promise<Organization | null> {
