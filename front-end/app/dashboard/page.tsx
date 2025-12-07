@@ -1,7 +1,10 @@
+// app/dashboard/page.tsx (or wherever this page lives)
 import { Card } from "@/app/ui/dashboard/cards";
 import RevenueChart from "@/app/ui/dashboard/revenue-chart";
 import LatestInvoices from "@/app/ui/dashboard/latest-invoices";
 import { getUserStats, getUserItems } from "@/app/lib/data";
+import { getCurrentUser } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -12,7 +15,14 @@ function formatCurrency(amount: number) {
 }
 
 export default async function Page() {
-  const userId = 1; // TODO: replace with real logged-in user
+  const user = await getCurrentUser();
+
+  // If not logged in, send them to login
+  if (!user) {
+    redirect("/login");
+  }
+
+  const userId = user.user_id;
 
   const [stats, items] = await Promise.all([
     getUserStats(userId),
@@ -21,7 +31,9 @@ export default async function Page() {
 
   return (
     <main>
-      <h1 className="mb-4 text-xl md:text-2xl">Dashboard</h1>
+      <h1 className="mb-4 text-xl md:text-2xl">
+        Dashboard – Welcome, {user.username}
+      </h1>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <Card
@@ -30,7 +42,6 @@ export default async function Page() {
           type="collected"
         />
 
-        {/* REAL ITEMS COUNT HERE */}
         <Card title="Items for Sale" value={items.length} type="pending" />
 
         <Card
@@ -42,7 +53,7 @@ export default async function Page() {
         <Card
           title="Inventory Value"
           value={formatCurrency(items.length * 39.99)}
-          type="customers" // or create a new type icon
+          type="customers"
         />
       </div>
 
