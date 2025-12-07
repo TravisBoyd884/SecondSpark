@@ -22,12 +22,21 @@ export default function LoginPage() {
         password,
       });
 
-      setMsg(JSON.stringify(result, null, 2));
+      // Show success (optional)
+      setMsg("Login successful!");
+
+      // ✅ Only redirect on success
+      router.push("/dashboard");
+      router.refresh();
     } catch (err: any) {
-      setMsg("Login failed: " + (err?.message ?? "Unknown error"));
+      console.error("Login error:", err);
+      // If we threw an Error with a message (see login() below), use that
+      setMsg(
+        "Login failed: " +
+          (err?.message || err?.response?.data?.error || "Unknown error"),
+      );
     } finally {
       setLoading(false);
-      router.push("/dashboard");
     }
   }
 
@@ -39,11 +48,11 @@ export default function LoginPage() {
       >
         <h1 className="text-2xl font-semibold text-center">Sign In</h1>
 
-        {/* {msg && ( */}
-        {/*   <pre className="bg-gray-100 p-2 rounded text-sm text-center whitespace-pre-wrap"> */}
-        {/*     {msg} */}
-        {/*   </pre> */}
-        {/* )} */}
+        {msg && (
+          <pre className="bg-gray-100 p-2 rounded text-sm text-center whitespace-pre-wrap">
+            {msg}
+          </pre>
+        )}
 
         <div className="space-y-1">
           <label className="block text-sm font-medium">Username</label>

@@ -87,8 +87,19 @@ export async function fetchLatestTransactions(userId: number) {
 
 // Auth
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
-  const res = await api.post<LoginResponse>("/login", payload);
-  return res.data;
+  try {
+    const res = await api.post<LoginResponse>("/login", payload, {
+      withCredentials: true, // ensure auth_token cookie is set if cross-origin
+    });
+    return res.data;
+  } catch (err: any) {
+    const backendError = err?.response?.data?.error;
+    if (backendError) {
+      // e.g., "Invalid username or password"
+      throw new Error(backendError);
+    }
+    throw err;
+  }
 }
 
 export async function registerUser(
@@ -242,4 +253,19 @@ export async function fetchRevenue(userId: number): Promise<Revenue[]> {
   }));
 
   return revenue;
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await api.post(
+      "/logout",
+      {},
+      {
+        withCredentials: true, // ensures auth_token cookie is sent
+      },
+    );
+  } catch (err) {
+    console.error("Logout failed:", err);
+    throw err;
+  }
 }

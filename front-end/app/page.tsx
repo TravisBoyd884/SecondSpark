@@ -21,6 +21,9 @@ export default function Home() {
           >
             <span>Login</span> <ArrowRightIcon className="w-5 md:w-6" />
           </Link>
+          <Link href="/auth/create_user" className="underline text-blue-600">
+            <span>Register</span>
+          </Link>
         </div>
         <div className="flex items-center justify-center p-6 md:w-3/5 md:px-28 md:py-12">
           <Image

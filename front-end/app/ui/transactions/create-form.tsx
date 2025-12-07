@@ -1,3 +1,4 @@
+// app/dashboard/transactions/create/Form.tsx
 "use client";
 
 import { useState } from "react";
@@ -7,7 +8,11 @@ import { CurrencyDollarIcon, CalendarIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/app/ui/button";
 import { createTransaction } from "@/app/lib/data";
 
-export default function Form() {
+interface FormProps {
+  userId: number;
+}
+
+export default function Form({ userId }: FormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +51,8 @@ export default function Form() {
         total: totalValue,
         tax: taxValue,
         reseller_comission: commissionValue,
-        reseller_id: 1, // TEMP: replace with actual logged-in user ID later
+        // 🔐 use logged-in user as seller
+        reseller_id: userId,
       });
 
       router.push("/dashboard/transactions");

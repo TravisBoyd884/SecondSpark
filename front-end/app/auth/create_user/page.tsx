@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { createUser } from "@/app/lib/data";
 import { RegisterResponse } from "@/app/lib/definitions";
+import { useRouter } from "next/navigation";
 
 export default function Page() {
+  const router = useRouter();
+
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -38,16 +41,12 @@ export default function Page() {
       if (result.error) {
         setError(result.error);
       } else {
-        const msg = result.message || "User registered successfully";
-        const userId =
-          result.user_id !== undefined ? ` (ID: ${result.user_id})` : "";
-        setMessage(msg + userId);
+        // Optionally show a temporary success message
+        setMessage("User registered successfully!");
 
-        // Clear form
-        setUsername("");
-        setEmail("");
-        setPassword("");
-        setOrganizationId("");
+        // Redirect to login after successful creation
+        router.push("/auth/login");
+        router.refresh();
       }
     } catch (err) {
       setError("Something went wrong registering the user");
