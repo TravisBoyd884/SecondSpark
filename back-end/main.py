@@ -1,16 +1,19 @@
 # flask imports
-from flask import Flask
-from flask_cors import CORS
-from flask import Blueprint, request, jsonify, abort, send_from_directory
-from routes import api, APIRoutes
-
-# Imports for database interface
-from db.interface import wait_for_db, load_schema
 import os
 
+from dotenv import load_dotenv
+from flask import Blueprint, Flask, abort, jsonify, request, send_from_directory
+from flask_cors import CORS
+
+# Imports for database interface
+from db.interface import load_schema, wait_for_db
+from routes import APIRoutes, api
+
+load_dotenv()
+
 # Constants for file/folder uploads
-UPLOAD_FOLDER = os.path.join('static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+UPLOAD_FOLDER = os.path.join("static", "uploads")
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 
 # Wait for database to initialize before running backend
 wait_for_db(40)
@@ -22,14 +25,18 @@ if not os.path.exists("db/.setup_done"):
 else:
     print("[INFO] Database already set, skipping setup process.")
 
+
 # Configure flask app to support file upload/download
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, supports_credentials=True, origins=["http://localhost:3000"])
     APIRoutes()  # Initializes and binds the routes
     # 1. Set the configuration for the upload directory
-    app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-    
+    app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+    app.config["JWT_SECRET"] = os.getenv("JWT_SECRET")
+    app.config["JWT_ALGORITHM"] = os.getenv("JWT_ALGORITHM", "HS256")
+
     # 2. Register your API routes Blueprint
     # You may add url prefix with argument <url_prefix='/api'>
     app.register_blueprint(api)
@@ -40,29 +47,24 @@ def create_app():
         print(f"Created upload directory: {UPLOAD_FOLDER}")
 
     # 4. (Optional but recommended) Serve the uploads directory
-    @app.route('/uploads/<filename>')
+    @app.route("/uploads/<filename>")
     def uploaded_file(filename):
         """Allows direct retrieval of uploaded images via URL, e.g., /uploads/my_pic.jpg"""
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
     # Route to serve a specific image file by name
-    @app.route('/images/<filename>')
+    @app.route("/images/<filename>")
     def get_uploaded_image(filename):
         """
         Serves the requested file securely from the UPLOAD_FOLDER (static/uploads).
         Example: GET /images/item_1.jpg will look for static/uploads/item_1.jpg.
         """
         # UPLOAD_FOLDER is expected to be configured in app.config (e.g., 'static/uploads')
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
     return app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app = create_app()
-    app.run(host='0.0.0.0', port=5000)
-
-
-
-
-
+    app.run(host="0.0.0.0", port=5000)
