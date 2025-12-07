@@ -97,8 +97,9 @@ export type RegisterPayload = {
 };
 
 export type RegisterResponse = {
-  message: string;
-  user_id: number;
+  message?: string;
+  user_id?: number;
+  error?: string;
 };
 
 export type Transaction_Item = {

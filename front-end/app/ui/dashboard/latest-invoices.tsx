@@ -1,6 +1,9 @@
+// app/ui/dashboard/latest-transactions.tsx
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { fetchLatestTransactions } from "@/app/lib/data";
+import { getCurrentUser } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -20,7 +23,15 @@ function formatDate(dateStr: string) {
 }
 
 export default async function LatestTransactions() {
-  const userId = 1; // TODO: replace with real logged-in user
+  // 🔐 Get logged-in user from auth_token cookie
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const userId = user.user_id;
+
+  // 💳 Fetch only THIS user's latest transactions
   const transactions = await fetchLatestTransactions(userId);
 
   return (

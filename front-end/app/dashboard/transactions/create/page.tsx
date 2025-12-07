@@ -1,21 +1,14 @@
 import Form from "@/app/ui/transactions/create-form";
-// import Breadcrumbs from "@/app/ui/invoices/breadcrumbs";
-// import { fetchCustomers } from "@/app/lib/data";
+// app/dashboard/transactions/create/page.tsx
+import { getCurrentUser } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
-export default async function Page() {
-  return (
-    <main>
-      {/* <Breadcrumbs */}
-      {/*   breadcrumbs={[ */}
-      {/*     { label: "Invoices", href: "/dashboard/invoices" }, */}
-      {/*     { */}
-      {/*       label: "Create Invoice", */}
-      {/*       href: "/dashboard/invoices/create", */}
-      {/*       active: true, */}
-      {/*     }, */}
-      {/*   ]} */}
-      {/* /> */}
-      <Form />
-    </main>
-  );
+export default async function CreateTransactionPage() {
+  const user = await getCurrentUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  return <Form userId={user.user_id} />;
 }

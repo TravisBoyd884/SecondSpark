@@ -1,5 +1,8 @@
+// app/ui/dashboard/revenue-chart.tsx
 import { CalendarIcon } from "@heroicons/react/24/outline";
 import { fetchRevenue } from "@/app/lib/data";
+import { getCurrentUser } from "@/app/lib/auth";
+import { redirect } from "next/navigation";
 
 function formatCurrency(amount: number) {
   return amount.toLocaleString("en-US", {
@@ -10,7 +13,15 @@ function formatCurrency(amount: number) {
 }
 
 export default async function RevenueChart() {
-  const userId = 1; // TODO: replace with real logged-in user
+  // 🔐 Get logged-in user from auth_token cookie
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const userId = user.user_id;
+
+  // 💰 Fetch revenue for THIS user
   const revenue = await fetchRevenue(userId);
   const chartHeight = 350;
 
@@ -28,7 +39,7 @@ export default async function RevenueChart() {
   }
 
   const maxRevenue = Math.max(...revenue.map((r) => r.revenue), 0);
-  const safeMax = maxRevenue || 100; // avoid divide-by-zero
+  const safeMax = maxRevenue || 100;
   const step = safeMax / 5;
 
   const yAxisLabels = Array.from({ length: 6 }, (_, i) =>

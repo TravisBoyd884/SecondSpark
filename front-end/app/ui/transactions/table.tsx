@@ -1,9 +1,11 @@
 // app/dashboard/transactions/InvoicesTable.tsx
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { getTransactions } from "@/app/lib/data";
+import { getUserTransactions } from "@/app/lib/data"; // ⬅️ use user-specific fn
 import { type Transaction } from "@/app/lib/definitions";
 import { DeleteInvoice } from "@/app/ui/transactions/buttons";
+import { getCurrentUser } from "@/app/lib/auth"; // ⬅️ read JWT cookie
+import { redirect } from "next/navigation";
 
 export function UpdateInvoice({ id }: { id: string }) {
   return (
@@ -23,7 +25,16 @@ export default async function InvoicesTable({
   query: string;
   currentPage: number;
 }) {
-  const transactions: Transaction[] = await getTransactions();
+  // 🔐 get logged-in user from auth_token cookie
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const userId = user.user_id;
+
+  // 🔢 only fetch THIS user's transactions
+  const transactions: Transaction[] = await getUserTransactions(userId);
 
   return (
     <div className="mt-6 flow-root">
