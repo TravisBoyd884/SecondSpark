@@ -65,8 +65,46 @@ class APIRoutes:
         self.register_routes()
 
     # ------------------------------------------------------------------
-    # Helper methods
+    # Helper methods 
     # ------------------------------------------------------------------
+
+    def _get_current_user_from_token(self):
+        """
+        Extracts and verifies JWT token from cookies, returns user_id if valid.
+        Returns None if token is missing or invalid.
+        """
+        token = request.cookies.get("auth_token")
+        if not token:
+            return None
+
+        try:
+            secret = current_app.config.get("JWT_SECRET")
+            if not secret:
+                return None
+
+            algorithm = current_app.config.get("JWT_ALGORITHM", "HS256")
+            decoded = jwt.decode(token, secret, algorithms=[algorithm])
+            return decoded.get("user_id")
+        except (jwt.InvalidTokenError, jwt.ExpiredSignatureError, Exception):
+            return None
+
+    def _require_admin(self):
+        """
+        Verifies that the current user is authenticated and has Admin role.
+        Returns (user_id, user_row) if admin, or (None, None) if not.
+        """
+        user_id = self._get_current_user_from_token()
+        if not user_id:
+            return None, None
+
+        user_row = self.db.get_app_user_by_id(user_id)
+        if not user_row:
+            return None, None
+
+        if user_row.get("organization_role") != "Admin":
+            return None, None
+
+        return user_id, user_row
 
     @staticmethod
     def _safe_money_to_float(money_str):
@@ -376,15 +414,20 @@ class APIRoutes:
 
         @api.route("/items", methods=["POST"])
         def create_item():
+            # Check if user is authenticated and is an admin
+            user_id, user_row = self._require_admin()
+            if not user_id or not user_row:
+                return jsonify({"error": "Only administrators can create items"}), 403
+
             data = request.get_json(force=True) or {}
 
             title = data.get("title")
             price = data.get("price")
             description = data.get("description")
             category = data.get("category")
-            list_date = data.get("list_date")
+            list_date = data.get("list_date") 
             creator_id = data.get("creator_id")
-
+            
             if not title or not creator_id:
                 return jsonify({"error": "title and creator_id are required"}), 400
 

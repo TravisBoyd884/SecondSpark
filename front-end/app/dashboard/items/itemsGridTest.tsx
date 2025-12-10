@@ -15,9 +15,10 @@ interface ItemImage {
 
 interface ItemsGridTestProps {
   userId: number;
+  isAdmin: boolean;
 }
 
-export default function ItemsGridTest({ userId }: ItemsGridTestProps) {
+export default function ItemsGridTest({ userId, isAdmin }: ItemsGridTestProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -212,7 +213,12 @@ export default function ItemsGridTest({ userId }: ItemsGridTestProps) {
         console.log("Item updated successfully:", savedItem);
         savedItemId = String(savedItem.item_id);
       } else {
-        // CREATE new
+        // CREATE new - check authorization
+        if (!isAdmin) {
+          alert("Only administrators can create items");
+          return;
+        }
+
         if (!updatedItem.title) {
           alert("Title is required to create a new item");
           return;
@@ -322,14 +328,16 @@ export default function ItemsGridTest({ userId }: ItemsGridTestProps) {
 
   return (
     <div>
-      <div className="flex justify-center mb-4">
-        <button
-          className="bg-black text-white w-8/10 ml-4 mr-4 my-4 px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer"
-          onClick={handleCreateItem}
-        >
-          Create Item
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="flex justify-center mb-4">
+          <button
+            className="bg-black text-white w-8/10 ml-4 mr-4 my-4 px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer"
+            onClick={handleCreateItem}
+          >
+            Create Item
+          </button>
+        </div>
+      )}
       <div className="flex justify-center mb-4">
         <button
           className="bg-black text-white w-1/10 px-4 py-2 rounded-md hover:bg-gray-600 cursor-pointer mb-4 ml-4 mr-4"
